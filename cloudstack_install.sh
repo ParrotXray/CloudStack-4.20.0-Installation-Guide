@@ -219,7 +219,7 @@ configure_network() {
     rm -f /etc/netplan/*.yaml
     
     # Create new netplan configuration
-    NETPLAN_CONFIG="/etc/netplan/00-cloudstack-config.yaml"
+    NETPLAN_CONFIG="/etc/netplan/01-network-manager-all.yaml"
     
     cat > $NETPLAN_CONFIG << EOF
 network:
