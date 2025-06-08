@@ -522,14 +522,14 @@ set_root_password() {
 
 # Main installation function
 main() {
-    log "Starting CloudStack 4.19.1 installation..."
+    log "Starting CloudStack 4.20.0 installation..."
     
     check_root
     set_root_password
 
     echo -e "${BLUE}"
     echo "======================================="
-    echo "    CloudStack 4.19.1 Installation    "
+    echo "    CloudStack 4.20.0 Installation    "
     echo "======================================="
     echo -e "${NC}"
     
