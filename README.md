@@ -63,10 +63,12 @@ vim /etc/netplan/01-network-manager-all.yaml
 ```yaml
 network:
   version: 2
+  renderer: networkd
   ethernets:
     NATNIC:
       dhcp4: false
       dhcp6: false
+      optional: true
   bridges:
     cloudbr0:
       dhcp4: false
@@ -323,25 +325,25 @@ Replace **LANIP** with the IP address you set up in `Configure Network` step 3.
 Then you will see this screen
 Enter default account: **admin** and default password: **password** to log in
 
-![image](https://hackmd.io/_uploads/S1CxHAAAp.png)
+![image](https://github.com/user-attachments/assets/a9792825-c83a-4383-bbe5-c543ec285cf1)
 
 After login, you will come to this screen
 Press **"Continue with Initlization"** in the lower right corner
 
-![image](https://hackmd.io/_uploads/BJaQBACCT.png)
+![image](https://github.com/user-attachments/assets/ce68253a-4459-4794-8a3a-50625014b789)
 
 Cloudstack requires you to change the password for user admin
 **Notice: If you forget your password, it will be irretrievable**
 
-![image](https://hackmd.io/_uploads/Sk3BSAR0T.png)
+![image](https://github.com/user-attachments/assets/6a3e3a15-a359-4b39-8bf8-67f36ecf4ceb)
 
 Select the option **"Core"** and press **"Next"**
 
-![image](https://hackmd.io/_uploads/rkVvSACCp.png)
+![image](https://github.com/user-attachments/assets/ce7d90b8-b91b-412f-8005-b9148676b498)
 
 Select the option **"Basic"** and press **"Next"**
 
-![image](https://hackmd.io/_uploads/BkIdSRCRp.png)
+![image](https://github.com/user-attachments/assets/cca47d3e-ae29-4b27-a15a-edb7a38b9884)
 
 Please change as follows
 
@@ -354,11 +356,11 @@ Please change as follows
 
 Then press **"Next"** to continue
 
-![image](https://hackmd.io/_uploads/HJvbLCCR6.png)
+![image](https://github.com/user-attachments/assets/5a56ffcd-a4c6-4d5b-9b92-8d62cc7437c1)
 
 No need to set here, press **"Next"**
 
-![image](https://hackmd.io/_uploads/BJ_fUARAT.png)
+![image](https://github.com/user-attachments/assets/9ab7eb81-3e8e-4416-a158-81d401590347)
 
 Please change as follows
 
@@ -369,7 +371,7 @@ Please change as follows
 
 Then press **"Next"** to continue
 
-![image](https://hackmd.io/_uploads/BJGjIARA6.png)
+![image](https://github.com/user-attachments/assets/ae72398a-3dc9-433b-8b49-ea7d97428763)
 
 Please change as follows
 
@@ -379,7 +381,7 @@ Please change as follows
 
 Then press **"Next"** to continue
 
-![image](https://hackmd.io/_uploads/H1MALC0A6.png)
+![image](https://github.com/user-attachments/assets/56fccd67-829a-45aa-83cf-8eece98d4bbf)
 
 Please change as follows
 
@@ -387,7 +389,7 @@ Please change as follows
 
 Then press **"Next"** to continue
 
-![image](https://hackmd.io/_uploads/H14yvA0Rp.png)
+![image](https://github.com/user-attachments/assets/fe148fd8-9480-4047-b282-d6a8d2fc463c)
 
 Please change as follows
 
@@ -401,7 +403,7 @@ passwd
 ```
 Then press **"Next"** to continue
 
-![image](https://hackmd.io/_uploads/rkvWvCCRa.png)
+![image](https://github.com/user-attachments/assets/b2d80ca3-07b9-4857-9878-9da74df33eda)
 
 
 Please change as follows
@@ -413,7 +415,7 @@ Please change as follows
 
 Then press **"Next"** to continue
 
-![image](https://hackmd.io/_uploads/Hk57w0ARa.png)
+![image](https://github.com/user-attachments/assets/e15f840b-99c2-4571-8dd0-56ceee5c3eff)
 
 Please change as follows
 
@@ -424,32 +426,32 @@ Please change as follows
 
 Then press **"Next"** to continue
 
-![image](https://hackmd.io/_uploads/S1RHP0CC6.png)
+![image](https://github.com/user-attachments/assets/b39d6475-659a-406c-bd90-7e6b9c1e91a3)
 
 Press **"Launch zone"** to set the zone
 
-![image](https://hackmd.io/_uploads/BJUvPCRR6.png)
+![image](https://github.com/user-attachments/assets/fb8befee-5229-46de-a259-ced0f09cd589)
 
 After setting up the zone, click **"Enable Zone"**.
 
-![image](https://hackmd.io/_uploads/rkO9dAAAp.png)
+![image](https://github.com/user-attachments/assets/4282adfc-8862-4ad1-8306-d15406efc317)
 
 ## Create Instance
 Before creating an instance, a bootable iso must be available
 
 Click **"Images"** on the left item and then click **"ISOs"** to come to this screen
 
-![image](https://hackmd.io/_uploads/SJvR_RACT.png)
+![image](https://github.com/user-attachments/assets/724a0bb2-f928-43eb-bb61-3beb11d87a25)
 
 Press **"Register ISO"**
 
 After pressing **"Register iso"**, you will come to this screen
 
-![image](https://hackmd.io/_uploads/ByLzY0RA6.png)
+![image](https://github.com/user-attachments/assets/74c57966-94b3-43e7-beb3-e8ee08b7a44c)
 
 Please change as follows
 
-- URL: **https://releases.ubuntu.com/jammy/ubuntu-22.04.4-desktop-amd64.iso**
+- URL: **https://releases.ubuntu.com/jammy/ubuntu-22.04.5-desktop-amd64.iso**
 - Name: **Ubuntu 22.04**
 - Description: **Ubuntu 22.04**
 - OS type: **Ubuntu 22.04 LTS**
@@ -458,23 +460,23 @@ Please change as follows
 
 Then press **"OK"** to continue
 
-![image](https://hackmd.io/_uploads/SyzutR0Cp.png)
+![image](https://github.com/user-attachments/assets/6b35d9a4-8d9a-464f-9d32-eb86fcfd5e79)
 
 Then wait until complete
 
-![image](https://hackmd.io/_uploads/Hywu300Rp.png)
+![image](https://github.com/user-attachments/assets/643358f1-db29-4725-9a3d-0a49dafb2c80)
 
 In order to speed up, you need to add a Compute offerings setting
 
 Click **"Service offerings"** on the left item and then click **"Compute offerings"** to come to this screen
 
-![image](https://hackmd.io/_uploads/Hyjt20RAT.png)
+![image](https://github.com/user-attachments/assets/1c800d37-29fe-4666-aa25-16e90bbde4c6)
 
 Press **"Add Compute offerings"**
 
 After pressing **"Add Compute offerings"**, you will come to this screen
 
-![image](https://hackmd.io/_uploads/rJvM600RT.png)
+![image](https://github.com/user-attachments/assets/32a72733-7205-4a25-a85a-f570ae0cd3dc)
 
 Please change as follows
 
@@ -486,20 +488,20 @@ Please change as follows
 
 Then press **"OK"** to continue
 
-![image](https://hackmd.io/_uploads/ryRX6000T.png)
+![image](https://github.com/user-attachments/assets/8ed21c6e-38d3-42b8-894f-2b12ec9eb079)
 
 Completed adding Compute offerings
 Now to create instance
 
 Click **"Compute"** on the left item and then click **"Instance"** to come to this screen
 
-![image](https://hackmd.io/_uploads/BkjSpC0Ra.png)
+![image](https://github.com/user-attachments/assets/5073048d-9119-4eee-969e-ff12e264ab4e)
 
 Press **"Add Instance"**
 
 After pressing **"Add Instance"**, you will come to this screen
 
-![image](https://hackmd.io/_uploads/ryAwTARCa.png)
+![image](https://github.com/user-attachments/assets/134c5264-c3ca-410a-86d2-89917d9024ec)
 
 Please change as follows
 
@@ -510,13 +512,13 @@ Please change as follows
 Then press **"Launch instance"** to continue
 After a while, you will see the instance successfully started
 
-![image](https://hackmd.io/_uploads/H1Y36CARp.png)
+![image](https://github.com/user-attachments/assets/be7c787e-1525-4ec0-8d5f-5a45ea7ed07c)
 
 You can operate instance by press **"View console"**
 **You need to install Ubuntu in the instance**
 **The installation process will not repeat**
 
-![image](https://hackmd.io/_uploads/BJQ7CCR0a.png)
+![image](https://github.com/user-attachments/assets/9c2e2a46-cddb-48a1-ac02-b0b57d201c93)
 
 Now there is one instance with Ubuntu in it
 
@@ -540,3 +542,7 @@ mount -a
 systemctl restart cloudstack-agent.service
 ```
 5. Finally, restart the Secondary SystemVM in the CloudStack Management.
+
+# Reference
+- https://hackmd.io/@DaLaw2/HJNA0hSA6
+- https://rohityadav.cloud/blog/cloudstack-kvm/
