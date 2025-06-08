@@ -2,11 +2,18 @@
 ## Requirement
 - OS: Ubuntu 24.04
 - Packages: Vim, OpenNTPD
+- Using root mode: sudo su
 
 To install these packages, run the following command:
 ```bash
 apt install vim openntpd -y
 ```
+## Quick installation
+Using the shell
+```bash
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/ParrotXray/CloudStack-4.20.0-Installation-Guide/refs/heads/main/cloudstack_install.sh)"
+```
+
 # Installation
 ## Install SSH
 1. Install SSH by running the following command:
