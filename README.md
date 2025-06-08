@@ -1,7 +1,7 @@
 # CloudStack 4.20.0 Installation Guide
 ## Requirement
 - OS: Ubuntu 24.04
-- Packages: Vim, OpenNTPD
+- Architecture: amd64, ~~aarch64~~
 
 Please enter the root environment first:
 ```bash
@@ -69,7 +69,7 @@ network:
   version: 2
   renderer: networkd
   ethernets:
-    NATNIC:
+    $NATNIC:
       dhcp4: false
       dhcp6: false
       optional: true
@@ -77,27 +77,33 @@ network:
     cloudbr0:
       dhcp4: false
       dhcp6: false
-      interfaces: [NATNIC]
-      addresses: [LANIP/CIDR]
+      interfaces: [$NATNIC]
+      addresses: [$LANIP/$CIDR]
       routes:
        - to: default
-         via: GATEWAY
+         via: $GATEWAY
       nameservers:
-        addresses: [8.8.8.8, 8.8.4.4]
+        addresses: [$DNS1, $DNS2]
       parameters:
         stp: false
         forward-delay: 0
 ```
 In the configuration file provided above, you need to replace the following parameters with your own settings:
-- **NATNIC**: the name of your network card
-- **LANIP**: This should be replaced with the IP address you want to set. For example, **`192.168.4.100`**.
-- **CIDR**: This should be replaced with the subnet mask of your network card, expressed in CIDR notation. To calculate the CIDR notation from the subnet mask, you can use an online subnet calculator or consult the documentation for your network equipment. For example, if your subnet mask is **`255.255.248.0`**, the CIDR notation is **`/21`**.
-- **GATEWAY**: This should be replaced with the IP address of your network gateway. For example, **`192.168.0.1`**
+- **$NATNIC**: the name of your network card
+- **$LANIP**: This should be replaced with the IP address you want to set. For example, **`192.168.4.100`**.
+- **$CIDR**: This should be replaced with the subnet mask of your network card, expressed in CIDR notation. To calculate the CIDR notation from the subnet mask, you can use an online subnet calculator or consult the documentation for your network equipment. For example, if your subnet mask is **`255.255.248.0`**, the CIDR notation is **`/21`**.
+- **$GATEWAY**: This should be replaced with the IP address of your network gateway. For example, **`192.168.0.1`**
+- **$DNS**: Enter the DNS server IP address. For example, **`8.8.8.8`, `8.8.4.4`**
 
 **Notice: Misconfiguration may cause the remote end to fail to connect**
 
 4. Save the file and exit.
-5. Check the configuration by running the following command:
+5. Set correct permissions:
+```bash
+chmod 600 /etc/netplan/01-network-manager-all.yaml
+chown root:root /etc/netplan/01-network-manager-all.yaml
+```
+6. Check the configuration by running the following command:
 ```bash
 netplan try
 ```
@@ -154,10 +160,10 @@ vim /etc/fstab
 ```
 10. Append the following lines to the end of the file:
 ```
-LANIP:/export/primary    /mnt/primary   nfs defaults 0 0
-LANIP:/export/secondary    /mnt/secondary   nfs defaults 0 0
+$LANIP:/export/primary    /mnt/primary   nfs defaults 0 0
+$LANIP:/export/secondary    /mnt/secondary   nfs defaults 0 0
 ```
-Replace **LANIP** with the IP address you set up in `Configure Network` step 3.
+Replace **$LANIP** with the IP address you set up in `Configure Network` step 3.
 
 11. Save the file and exit.
 12. Finally, restart systemd and mount NFS by executing the following commands:
@@ -225,18 +231,18 @@ apt install cloudstack-management -y
 ```
 11. Set up the CloudStack database with the following command:
 ```bash
-cloudstack-setup-databases cloud:mysqlCloudPassword@localhost \
---deploy-as=root:mysqlRootPassword \
+cloudstack-setup-databases cloud:$mysqlCloudPassword@localhost \
+--deploy-as=root:$mysqlRootPassword \
 -e file \
--m managementServerKey \
--k databaseKey \
--i LANIP
+-m $managementServerKey \
+-k $databaseKey \
+-i $LANIP
 ```
-- **mysqlCloudPassword** is the password of the account created by CloudStack you need to set
-- **mysqlRootPassword** is the password you just set in step 6
-- **managementServerKey** is the management server key you need to set.
-- **databaseKey** is the database key you need to set.
-- **LANIP** is the IP address you set up in `Configure Network` step 3.
+- **$mysqlCloudPassword** is the password of the account created by CloudStack you need to set
+- **$mysqlRootPassword** is the password you just set in step 6
+- **$managementServerKey** is the management server key you need to set.
+- **$databaseKey** is the database key you need to set.
+- **$LANIP** is the IP address you set up in `Configure Network` step 3.
 
 12. Complete the configuration of CloudStack Management with the following command:
 ```bash
@@ -248,10 +254,10 @@ cloudstack-setup-management
 -m /mnt/secondary \
 -u http://download.cloudstack.org/systemvm/4.20/systemvmtemplate-4.20.1-x86_64-kvm.qcow2.bz2 \
 -h kvm \
--s managementServerKey \
+-s $managementServerKey \
 -F
 ```
-- **managementServerKey** is the management server key you just set in step 12.
+- **$managementServerKey** is the management server key you just set in step 12.
 
 14. Set sudoers to make sure everything works with the following command:
 ```bash
@@ -322,9 +328,9 @@ apparmor_parser -R /etc/apparmor.d/usr.lib.libvirt.virt-aa-helper
 ## Setup Zone
 Enter this URL in your browser to log in to cloudstack
 ```
-LANIP:8080
+$LANIP:8080
 ```
-Replace **LANIP** with the IP address you set up in `Configure Network` step 3.
+Replace **$LANIP** with the IP address you set up in `Configure Network` step 3.
 
 Then you will see this screen
 Enter default account: **admin** and default password: **password** to log in
@@ -369,8 +375,8 @@ No need to set here, press **"Next"**
 Please change as follows
 
 - Pod Name: **Pod1**
-- Reserved system gateway: **Please enter your GATEWAY is what you entered in the `Configure Network` step 3**
-- Reserved system netmask: **Please enter your netmask, which is what you converted in the `Configure Network` step 3**
+- Reserved system gateway: **Please enter your $GATEWAY is what you entered in the `Configure Network` step 3**
+- Reserved system netmask: **Please enter your netmask, which is what you converted to $CIDR in step 3 of `Configure Network`**
 - Start/End reserved system IP: **Please enter a network segment for CloudStack to use**
 
 Then press **"Next"** to continue
@@ -379,8 +385,8 @@ Then press **"Next"** to continue
 
 Please change as follows
 
-- Guest gateway: **Please enter your GATEWAY is what you entered in the `Configure Network` step 3**
-- Guest netmask: **Please enter your netmask, which is what you converted to CIDR in step 3 of `Configure Network`**
+- Guest gateway: **Please enter your $GATEWAY is what you entered in the `Configure Network` step 3**
+- Guest netmask: **Please enter your netmask, which is what you converted to $CIDR in step 3 of `Configure Network`**
 - Guest start/end IP: **Please enter a network segment for CloudStack to use**
 
 Then press **"Next"** to continue
@@ -397,7 +403,7 @@ Then press **"Next"** to continue
 
 Please change as follows
 
-- Host name: **Please enter your LANIP is what you entered in the `Configure Network` step 3**
+- Host name: **Please enter your $LANIP is what you entered in the `Configure Network` step 3**
 - Username: **root**
 - Password: **Please enter your root password**
 
@@ -414,7 +420,7 @@ Please change as follows
 
 - Name: **Primary1**
 - Protocol: **nfs**
-- Server: **Please enter your LANIP is what you entered in the `Configure Network` step 3**
+- Server: **Please enter your $LANIP is what you entered in the `Configure Network` step 3**
 - Path: **/export/primary**
 
 Then press **"Next"** to continue
@@ -425,7 +431,7 @@ Please change as follows
 
 - Protocol: **NFS**
 - Name: **Secondary1**
-- Server: **Please enter your LANIP is what you entered in the `Configure Network` step 3**
+- Server: **Please enter your $LANIP is what you entered in the `Configure Network` step 3**
 - Path: **/export/secondary**
 
 Then press **"Next"** to continue
