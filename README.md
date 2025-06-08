@@ -2,12 +2,15 @@
 ## Requirement
 - OS: Ubuntu 24.04
 - Packages: Vim, OpenNTPD
-- Using root mode: sudo su
-
+Please enter the root environment first:
+```bash
+sudo su
+```
 To install these packages, run the following command:
 ```bash
 apt install vim openntpd -y
 ```
+
 ## Quick installation
 Using the shell
 ```bash
