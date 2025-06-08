@@ -212,7 +212,7 @@ Replace **mysqlRootPassword** with the root password you want to change
 
 8. Add the CloudStack Management package to the apt source with the following commands:
 ```bash
-echo deb http://download.cloudstack.org/ubuntu jammy 4.19  &gt; /etc/apt/sources.list.d/cloudstack.list
+echo deb http://download.cloudstack.org/ubuntu noble 4.20  &gt; /etc/apt/sources.list.d/cloudstack.list
 wget -O - http://download.cloudstack.org/release.asc|apt-key add -
 ```
 9. Update apt with the following command:
@@ -246,7 +246,7 @@ cloudstack-setup-management
 ```bash
 /usr/share/cloudstack-common/scripts/storage/secondary/cloud-install-sys-tmplt \
 -m /mnt/secondary \
--u http://download.cloudstack.org/systemvm/4.19/systemvmtemplate-4.19.1-kvm.qcow2.bz2 \
+-u http://download.cloudstack.org/systemvm/4.20/systemvmtemplate-4.20.1-x86_64-kvm.qcow2.bz2 \
 -h kvm \
 -s managementServerKey \
 -F
