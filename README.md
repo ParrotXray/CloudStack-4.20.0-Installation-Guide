@@ -2,6 +2,7 @@
 ## Requirement
 - OS: Ubuntu 24.04
 - Packages: Vim, OpenNTPD
+
 Please enter the root environment first:
 ```bash
 sudo su
