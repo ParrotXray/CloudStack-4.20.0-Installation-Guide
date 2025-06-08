@@ -116,8 +116,8 @@ mkdir -m 777 /mnt/secondary
 ```
 3. Set NFS exports by running the following commands:
 ```bash
-echo &#34;/export/secondary *(rw,async,no_root_squash,no_subtree_check)&#34; &gt;&gt; /etc/exports
-echo &#34;/export/primary *(rw,async,no_root_squash,no_subtree_check)&#34; &gt;&gt; /etc/exports
+echo "/export/secondary *(rw,async,no_root_squash,no_subtree_check)" >> /etc/exports
+echo "/export/primary *(rw,async,no_root_squash,no_subtree_check)" >> /etc/exports
 ```
 4. Configure the NFS kernel server settings by editing the configuration file with the following command:
 ```bash
@@ -177,7 +177,7 @@ innodb_rollback_on_timeout=1
 innodb_lock_wait_timeout=600
 max_connections=350
 log-bin=mysql-bin
-binlog-format = &#39;ROW&#39;
+binlog-format = 'ROW'
 ```
 4. Save the file and exit.
 5. Enable and start the MySQL service with the following commands:
@@ -190,7 +190,7 @@ systemctl start mysql.service
 mysql -u root
 ```
 ```sql
-ALTER USER &#39;root&#39;@&#39;localhost&#39; IDENTIFIED WITH mysql_native_password by &#39;mysqlRootPassword&#39;;
+ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password by 'mysqlRootPassword';
 exit
 ```
 Replace **mysqlRootPassword** with the root password you want to change
@@ -271,7 +271,7 @@ vim /etc/libvirt/qemu.conf
 ```
 4. Find the identifier and uncomment, change or append to the configuration:
 ```
-vnc_listen = &#34;0.0.0.0&#34;
+vnc_listen = "0.0.0.0"
 ```
 5. Save the file and exit.
 6. Configure the hypervisor by editing the libvirtd.conf file with the following command:
@@ -282,8 +282,8 @@ vim /etc/libvirt/libvirtd.conf
 ```
 listen_tls = 0
 listen_tcp = 1
-tcp_port = &#34;16509&#34;
-auth_tcp = &#34;none&#34;
+tcp_port = "16509"
+auth_tcp = "none"
 mdns_adv = 0
 ```
 8. Save the file and exit.
@@ -293,7 +293,7 @@ vim /etc/default/libvirtd
 ```
 10. Find the identifier and uncomment, change or append to the configuration:
 ```
-LIBVIRTD_ARGS=&#34;--listen&#34;
+LIBVIRTD_ARGS="--listen"
 ```
 11. Save the file and exit.
 12. Mask libvirt for listening with the following command:
@@ -326,7 +326,7 @@ Enter default account: **admin** and default password: **password** to log in
 ![image](https://hackmd.io/_uploads/S1CxHAAAp.png)
 
 After login, you will come to this screen
-Press **&#34;Continue with Initlization&#34;** in the lower right corner
+Press **"Continue with Initlization"** in the lower right corner
 
 ![image](https://hackmd.io/_uploads/BJaQBACCT.png)
 
@@ -335,11 +335,11 @@ Cloudstack requires you to change the password for user admin
 
 ![image](https://hackmd.io/_uploads/Sk3BSAR0T.png)
 
-Select the option **&#34;Core&#34;** and press **&#34;Next&#34;**
+Select the option **"Core"** and press **"Next"**
 
 ![image](https://hackmd.io/_uploads/rkVvSACCp.png)
 
-Select the option **&#34;Basic&#34;** and press **&#34;Next&#34;**
+Select the option **"Basic"** and press **"Next"**
 
 ![image](https://hackmd.io/_uploads/BkIdSRCRp.png)
 
@@ -352,11 +352,11 @@ Please change as follows
 - Internal DNS2: **8.8.4.4**
 - Hypervisor: **KVM**
 
-Then press **&#34;Next&#34;** to continue
+Then press **"Next"** to continue
 
 ![image](https://hackmd.io/_uploads/HJvbLCCR6.png)
 
-No need to set here, press **&#34;Next&#34;**
+No need to set here, press **"Next"**
 
 ![image](https://hackmd.io/_uploads/BJ_fUARAT.png)
 
@@ -367,7 +367,7 @@ Please change as follows
 - Reserved system netmask: **Please enter your netmask, which is what you converted in the `Configure Network` step 3**
 - Start/End reserved system IP: **Please enter a network segment for CloudStack to use**
 
-Then press **&#34;Next&#34;** to continue
+Then press **"Next"** to continue
 
 ![image](https://hackmd.io/_uploads/BJGjIARA6.png)
 
@@ -377,7 +377,7 @@ Please change as follows
 - Guest netmask: **Please enter your netmask, which is what you converted to CIDR in step 3 of `Configure Network`**
 - Guest start/end IP: **Please enter a network segment for CloudStack to use**
 
-Then press **&#34;Next&#34;** to continue
+Then press **"Next"** to continue
 
 ![image](https://hackmd.io/_uploads/H1MALC0A6.png)
 
@@ -385,7 +385,7 @@ Please change as follows
 
 - Cluster name: **Cluster1**
 
-Then press **&#34;Next&#34;** to continue
+Then press **"Next"** to continue
 
 ![image](https://hackmd.io/_uploads/H14yvA0Rp.png)
 
@@ -395,11 +395,11 @@ Please change as follows
 - Username: **root**
 - Password: **Please enter your root password**
 
-If you don&#39;t know the root password, use the following commands to change root password:
+If you don't know the root password, use the following commands to change root password:
 ```bash
 passwd
 ```
-Then press **&#34;Next&#34;** to continue
+Then press **"Next"** to continue
 
 ![image](https://hackmd.io/_uploads/rkvWvCCRa.png)
 
@@ -411,7 +411,7 @@ Please change as follows
 - Server: **Please enter your LANIP is what you entered in the `Configure Network` step 3**
 - Path: **/export/primary**
 
-Then press **&#34;Next&#34;** to continue
+Then press **"Next"** to continue
 
 ![image](https://hackmd.io/_uploads/Hk57w0ARa.png)
 
@@ -422,28 +422,28 @@ Please change as follows
 - Server: **Please enter your LANIP is what you entered in the `Configure Network` step 3**
 - Path: **/export/secondary**
 
-Then press **&#34;Next&#34;** to continue
+Then press **"Next"** to continue
 
 ![image](https://hackmd.io/_uploads/S1RHP0CC6.png)
 
-Press **&#34;Launch zone&#34;** to set the zone
+Press **"Launch zone"** to set the zone
 
 ![image](https://hackmd.io/_uploads/BJUvPCRR6.png)
 
-After setting up the zone, click **&#34;Enable Zone&#34;**.
+After setting up the zone, click **"Enable Zone"**.
 
 ![image](https://hackmd.io/_uploads/rkO9dAAAp.png)
 
 ## Create Instance
 Before creating an instance, a bootable iso must be available
 
-Click **&#34;Images&#34;** on the left item and then click **&#34;ISOs&#34;** to come to this screen
+Click **"Images"** on the left item and then click **"ISOs"** to come to this screen
 
 ![image](https://hackmd.io/_uploads/SJvR_RACT.png)
 
-Press **&#34;Register ISO&#34;**
+Press **"Register ISO"**
 
-After pressing **&#34;Register iso&#34;**, you will come to this screen
+After pressing **"Register iso"**, you will come to this screen
 
 ![image](https://hackmd.io/_uploads/ByLzY0RA6.png)
 
@@ -456,7 +456,7 @@ Please change as follows
 - Extractable: **Turn On**
 - Public: **Turn On**
 
-Then press **&#34;OK&#34;** to continue
+Then press **"OK"** to continue
 
 ![image](https://hackmd.io/_uploads/SyzutR0Cp.png)
 
@@ -466,13 +466,13 @@ Then wait until complete
 
 In order to speed up, you need to add a Compute offerings setting
 
-Click **&#34;Service offerings&#34;** on the left item and then click **&#34;Compute offerings&#34;** to come to this screen
+Click **"Service offerings"** on the left item and then click **"Compute offerings"** to come to this screen
 
 ![image](https://hackmd.io/_uploads/Hyjt20RAT.png)
 
-Press **&#34;Add Compute offerings&#34;**
+Press **"Add Compute offerings"**
 
-After pressing **&#34;Add Compute offerings&#34;**, you will come to this screen
+After pressing **"Add Compute offerings"**, you will come to this screen
 
 ![image](https://hackmd.io/_uploads/rJvM600RT.png)
 
@@ -484,35 +484,35 @@ Please change as follows
 - CPU (in MHz): **Adjust to your needs**
 - Memory (in MB): **Adjust to your needs**
 
-Then press **&#34;OK&#34;** to continue
+Then press **"OK"** to continue
 
 ![image](https://hackmd.io/_uploads/ryRX6000T.png)
 
 Completed adding Compute offerings
 Now to create instance
 
-Click **&#34;Compute&#34;** on the left item and then click **&#34;Instance&#34;** to come to this screen
+Click **"Compute"** on the left item and then click **"Instance"** to come to this screen
 
 ![image](https://hackmd.io/_uploads/BkjSpC0Ra.png)
 
-Press **&#34;Add Instance&#34;**
+Press **"Add Instance"**
 
-After pressing **&#34;Add Instance&#34;**, you will come to this screen
+After pressing **"Add Instance"**, you will come to this screen
 
 ![image](https://hackmd.io/_uploads/ryAwTARCa.png)
 
 Please change as follows
 
-- Select **&#34;ISOs&#34;** in **&#34;Template/ISO&#34;** and then select **&#34;Community&#34;**
-- Select **&#34;Large Instance&#34;** in **&#34;Compute offering&#34;**
+- Select **"ISOs"** in **"Template/ISO"** and then select **"Community"**
+- Select **"Large Instance"** in **"Compute offering"**
 - **Disk size** is selected according to your needs
 
-Then press **&#34;Launch instance&#34;** to continue
+Then press **"Launch instance"** to continue
 After a while, you will see the instance successfully started
 
 ![image](https://hackmd.io/_uploads/H1Y36CARp.png)
 
-You can operate instance by press **&#34;View console&#34;**
+You can operate instance by press **"View console"**
 **You need to install Ubuntu in the instance**
 **The installation process will not repeat**
 
@@ -522,7 +522,7 @@ Now there is one instance with Ubuntu in it
 
 # Some Problem Solutions
 ## Secondary Not Found
-If you encounter the **&#34;Secondary not found&#34;**, you can try the following steps to resolve it:
+If you encounter the **"Secondary not found"**, you can try the following steps to resolve it:
 1. Restart the NFS server service using the following command:
 ```bash
 systemctl restart nfs-server.service
