@@ -92,6 +92,8 @@ collect_network_config() {
     prompt_input "Enter your desired IP address (e.g., 192.168.4.100)" "LANIP"
     prompt_input "Enter CIDR notation (e.g., /24, /21)" "CIDR"
     prompt_input "Enter gateway IP (e.g., 192.168.4.1)" "GATEWAY"
+    prompt_input "Enter DNS1 (e.g., 8.8.8.8)" "DNS1"
+    prompt_input "Enter DNS2 (e.g., 8.8.4.4)" "DNS2"
     
     # Validate IP addresses
     if ! [[ $LANIP =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
@@ -104,10 +106,22 @@ collect_network_config() {
         exit 1
     fi
     
+    if ! [[ $DNS1 =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+        error "Invalid DNS1 format: $DNS1"
+        exit 1
+    fi
+
+    if ! [[ $DNS2 =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+        error "Invalid DNS2 format: $DNS2"
+        exit 1
+    fi
+    
     log "Network configuration collected:"
     info "Interface: $NATNIC"
     info "IP: $LANIP$CIDR"
     info "Gateway: $GATEWAY"
+    info "DNS1: $DNS1"
+    info "DNS2: $DNS2"
 }
 
 # Generate secure key
@@ -226,7 +240,7 @@ network:
        - to: default
          via: ${GATEWAY}
       nameservers:
-        addresses: [8.8.8.8, 8.8.4.4]
+        addresses: [${DNS1}, ${DNS2}]
       parameters:
         stp: false
         forward-delay: 0
@@ -561,7 +575,6 @@ case "${1:-}" in
         echo "Usage: $0 [OPTIONS]"
         echo "Options:"
         echo "  --fix-secondary     Fix 'Secondary not found' issue"
-        echo "  --manual-network    Use manual network configuration"
         echo "  --help             Show this help message"
         ;;
     *)
