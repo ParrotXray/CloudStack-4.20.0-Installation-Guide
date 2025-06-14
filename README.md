@@ -1,7 +1,7 @@
 # CloudStack 4.20.0 Installation Guide
 ## Requirement
 - OS: Ubuntu 24.04
-- Architecture: amd64, ~~aarch64~~
+- Architecture: amd64, aarch64
 
 Please enter the root environment first:
 ```bash

@@ -12,7 +12,12 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
+LIGHT_CYAN='\033[1;36m'
 NC='\033[0m' # No Color
+
+# Global variables for architecture
+ARCH=""
+SYSTEMVM_URL=""
 
 # Logging function
 log() {
@@ -60,6 +65,59 @@ prompt_input() {
     eval "$var_name='$input'"
 }
 
+# Check CPU architecture and set appropriate variables
+check_architecture() {
+    log "Detecting CPU architecture..."
+    
+    arch_output=$(uname -m)
+    os_arch=$(dpkg --print-architecture)
+    
+    info "System architecture: $arch_output"
+    info "OS architecture: $os_arch"
+    
+    case "$arch_output" in
+        x86_64|amd64)
+            ARCH="amd64"
+            SYSTEMVM_URL="https://download.cloudstack.org/systemvm/4.20/systemvmtemplate-4.20.1-x86_64-kvm.qcow2.bz2"
+            log "Detected AMD64/x86_64 architecture"
+            ;;
+        aarch64|arm64)
+            ARCH="aarch64"
+            SYSTEMVM_URL="https://download.cloudstack.org/systemvm/4.20/systemvmtemplate-4.20.1-aarch64-kvm.qcow2.bz2"
+            log "Detected AArch64/ARM64 architecture"
+            ;;
+        armv7l|armhf)
+            error "ARM 32-bit (ARMv7) is not supported by CloudStack 4.20"
+            echo "Supported architectures: AMD64/x86_64, AArch64/ARM64"
+            exit 1
+            ;;
+        *)
+            error "Unsupported architecture: $arch_output"
+            echo "Supported architectures: AMD64/x86_64, AArch64/ARM64"
+            echo "Current architecture: $arch_output"
+            exit 1
+            ;;
+    esac
+    
+    # Verify architecture compatibility with OS
+    case "$os_arch" in
+        amd64)
+            if [ "$ARCH" != "amd64" ]; then
+                error "Architecture mismatch detected. OS: $os_arch, Hardware: $arch_output"
+                exit 1
+            fi
+            ;;
+        arm64)
+            if [ "$ARCH" != "aarch64" ]; then
+                error "Architecture mismatch detected. OS: $os_arch, Hardware: $arch_output"
+                exit 1
+            fi
+            ;;
+    esac
+    
+    info "Using SystemVM template: $SYSTEMVM_URL"
+}
+
 # Check network interface exists
 check_network_interface() {
     if ! ip link show "$NATNIC" >/dev/null 2>&1; then
@@ -71,10 +129,7 @@ check_network_interface() {
     return 0
 }
 
-# Collect network configuration
-collect_network_config() {
-    log "Collecting network configuration..."
-    
+select_interface() {
     echo -e "\n${BLUE}Available network interfaces:${NC}"
     ip link show | grep -E '^[0-9]+:' | awk '{print $2}' | sed 's/://' | grep -v lo
     
@@ -84,7 +139,9 @@ collect_network_config() {
             break
         fi
     done
-    
+}
+
+collect_network_ip_info() {
     # Show current IP configuration
     echo -e "\n${BLUE}Current configuration of $NATNIC:${NC}"
     ip addr show $NATNIC
@@ -122,6 +179,14 @@ collect_network_config() {
     info "Gateway: $GATEWAY"
     info "DNS1: $DNS1"
     info "DNS2: $DNS2"
+}
+
+# Collect network configuration
+collect_network_config() {
+    log "Collecting network configuration..."
+    
+    select_interface
+    collect_network_ip_info
 }
 
 # Generate secure key
@@ -279,13 +344,15 @@ EOF
             ip addr show cloudbr0
         else
             error "Bridge cloudbr0 was not created properly"
+            exit 1
         fi
         
         # Test connectivity
         if ping -c 3 $GATEWAY >/dev/null 2>&1; then
             log "Network connectivity verified"
         else
-            warning "Cannot ping gateway. Please check network configuration."
+            error "Cannot ping gateway. Please check network configuration."
+            exit 1
         fi
     else
         error "Failed to apply network configuration"
@@ -408,11 +475,15 @@ install_cloudstack_management() {
     log "Installing CloudStack Management..."
     
     # Add CloudStack repository
-    echo "deb http://download.cloudstack.org/ubuntu noble 4.20" > /etc/apt/sources.list.d/cloudstack.list
-    wget -O - http://download.cloudstack.org/release.asc | apt-key add -
+    # echo "deb http://download.cloudstack.org/ubuntu noble 4.20" > /etc/apt/sources.list.d/cloudstack.list
+    # wget -O - http://download.cloudstack.org/release.asc | apt-key add -
+
+    mkdir -p /etc/apt/keyrings
+    wget -O- http://packages.shapeblue.com/release.asc | gpg --dearmor | sudo tee /etc/apt/keyrings/cloudstack.gpg > /dev/null
+    echo deb [signed-by=/etc/apt/keyrings/cloudstack.gpg] http://packages.shapeblue.com/cloudstack/upstream/debian/4.20 / > /etc/apt/sources.list.d/cloudstack.list
     
     apt update
-    apt install cloudstack-management -y
+    apt install cloudstack-management cloudstack-usage -y
     
     # Setup CloudStack database
     cloudstack-setup-databases cloud:${MYSQL_CLOUD_PASSWORD}@localhost \
@@ -422,8 +493,9 @@ install_cloudstack_management() {
         -k ${DATABASE_KEY} \
         -i ${LANIP}
     
-    cloudstack-setup-management
-    
+    # Stop the automatic start after install
+    systemctl stop cloudstack-management cloudstack-usage
+
     log "CloudStack Management installed successfully"
 }
 
@@ -433,7 +505,7 @@ install_systemvm() {
     
     /usr/share/cloudstack-common/scripts/storage/secondary/cloud-install-sys-tmplt \
         -m /mnt/secondary \
-        -u http://download.cloudstack.org/systemvm/4.20/systemvmtemplate-4.20.1-x86_64-kvm.qcow2.bz2 \
+        -u ${SYSTEMVM_URL} \
         -h kvm \
         -s ${MANAGEMENT_SERVER_KEY} \
         -F
@@ -448,8 +520,11 @@ install_systemvm() {
 install_cloudstack_agent() {
     log "Installing CloudStack Agent..."
     
-    apt install cloudstack-agent -y
+    apt install qemu-kvm cloudstack-agent -y
     systemctl enable cloudstack-agent.service
+
+    # Stop the automatic start after install
+    systemctl stop cloudstack-agent
     
     # Configure QEMU
     sed -i 's/#vnc_listen = "0.0.0.0"/vnc_listen = "0.0.0.0"/' /etc/libvirt/qemu.conf
@@ -467,6 +542,9 @@ install_cloudstack_agent() {
     # Mask libvirt sockets
     systemctl mask libvirtd.socket libvirtd-ro.socket \
         libvirtd-admin.socket libvirtd-tls.socket libvirtd-tcp.socket
+
+    # Add remote_mode="legacy" configuration
+    echo 'remote_mode="legacy"' >> /etc/libvirt/libvirt.conf
     
     systemctl restart libvirtd
     
@@ -479,13 +557,18 @@ install_cloudstack_agent() {
     log "CloudStack Agent installed successfully"
 }
 
+# Start your cloudstack
+launch_cloudstack(){
+    cloudstack-setup-management
+}
+
 # Display final information
 display_final_info() {
     log "CloudStack installation completed!"
     
     echo -e "\n${YELLOW}=== Important Security Information ===${NC}"
     echo "Your CloudStack keys have been saved to: /root/cloudstack_keys.txt"
-    echo -e "${RED}CRITICAL: Backup this file! Without these keys, you cannot recover your CloudStack installation.${NC}"
+    echo -e "${LIGHT_CYAN}CRITICAL: Backup this file! Without these keys, you cannot recover your CloudStack installation.${NC}"
     
     echo -e "\n${GREEN}=== Installation Summary ===${NC}"
     info "CloudStack Management Server: http://${LANIP}:8080"
@@ -506,6 +589,8 @@ display_final_info() {
 
 # Troubleshooting function
 fix_secondary_not_found() {
+    check_root
+    
     log "Fixing 'Secondary not found' issue..."
     
     systemctl restart nfs-server.service
@@ -514,6 +599,159 @@ fix_secondary_not_found() {
     systemctl restart cloudstack-agent.service
     
     log "Secondary storage issue fixed. Please restart Secondary SystemVM in CloudStack Management."
+}
+
+# Select network configuration mode
+select_network_mode() {
+    echo -e "${BLUE}"
+    echo "======================================="
+    echo "    NETWORK CONFIGURATION OPTIONS     "
+    echo "======================================="
+    echo -e "${NC}"
+    echo ""
+    echo "1) Static IP Configuration (Recommended)"
+    echo "   - Best for production environments"
+    echo ""
+    echo "2) DHCP Bridge Configuration"
+    echo "   - Good for testing/development"
+    echo ""
+    while true; do
+        read -p "Select network configuration option (1-2): " choice
+        
+        case $choice in
+            1)
+                NETWORK_MODE="static"
+                log "Selected: Static IP Configuration"
+                break
+                ;;
+            2)
+                NETWORK_MODE="dhcp"
+                log "Selected: DHCP Bridge Configuration"
+                break
+                ;;
+            *)
+                error "Invalid choice. Please select 1-2."
+                ;;
+        esac
+    done
+}
+
+set_network_mode () {
+    apt install net-tools bridge-utils -y
+    
+    select_interface
+
+    # Get current netplan files
+    NETPLAN_FILES=($(ls /etc/netplan/*.yaml 2>/dev/null || echo))
+    
+    # Backup existing netplan configurations
+    for file in "${NETPLAN_FILES[@]}"; do
+        if [ -f "$file" ]; then
+            cp "$file" "${file}.backup.$(date +%Y%m%d_%H%M%S)"
+            log "Backed up $file"
+        fi
+    done
+    
+    # Remove existing configurations to avoid conflicts
+    rm -f /etc/netplan/*.yaml
+    
+    # Create new netplan configuration
+    NETPLAN_CONFIG="/etc/netplan/01-network-manager-all.yaml"
+
+    if [ "$NETWORK_MODE" = "static" ]; then
+        collect_network_ip_info
+
+        log "Configuring network..."
+        
+        cat > $NETPLAN_CONFIG << EOF
+network:
+  version: 2
+  renderer: networkd
+  ethernets:
+    ${NATNIC}:
+      addresses: [${LANIP}${CIDR}]
+      routes:
+       - to: default
+         via: ${GATEWAY}
+      nameservers:
+        addresses: [${DNS1}, ${DNS2}]
+
+EOF
+    elif [ "$NETWORK_MODE" = "dhcp" ]; then
+        log "Configuring network..."
+        
+        cat > $NETPLAN_CONFIG << EOF
+network:
+  version: 2
+  renderer: networkd
+  ethernets:
+    ${NATNIC}:
+      dhcp4: true
+      dhcp6: false
+      optional: true
+EOF
+    fi
+    # Set correct permissions
+    chmod 600 $NETPLAN_CONFIG
+    chown root:root $NETPLAN_CONFIG
+    
+    log "Network configuration created with correct permissions"
+    
+    # Validate configuration
+    if ! netplan generate; then
+        error "Network configuration validation failed"
+        exit 1
+    fi
+    
+    warning "Network configuration will be applied. This may temporarily disconnect your connection."
+    warning "Make sure you have physical access to the server!"
+    
+    echo -e "\nCurrent network configuration:"
+    cat $NETPLAN_CONFIG
+    
+    read -p "Press Enter to apply the configuration (Ctrl+C to abort)..."
+    
+    # Apply configuration directly (skip try as it may not work with bridges)
+    if netplan apply; then
+        log "Network configuration applied successfully"
+        
+        # Wait for network to stabilize
+        sleep 5
+        
+        # Test connectivity
+        if ping -c 3 "google.com" >/dev/null 2>&1; then
+            log "Network connectivity verified"
+        else
+            error "Cannot ping gateway. Please check network configuration."
+            exit 1
+        fi
+    else
+        error "Failed to apply network configuration"
+        
+        # Try to restore backup
+        if [ ${#NETPLAN_FILES[@]} -gt 0 ]; then
+            warning "Attempting to restore original configuration..."
+            rm -f $NETPLAN_CONFIG
+            for file in "${NETPLAN_FILES[@]}"; do
+                backup_file="${file}.backup.$(date +%Y%m%d)_*"
+                if ls $backup_file >/dev/null 2>&1; then
+                    latest_backup=$(ls -t ${backup_file} | head -1)
+                    cp "$latest_backup" "$file"
+                fi
+            done
+            netplan apply
+        fi
+        exit 1
+    fi
+
+}
+
+network_settings() {
+    clear
+
+    check_root
+    select_network_mode
+    set_network_mode
 }
 
 # Set root password
@@ -536,14 +774,18 @@ set_root_password() {
 
 # Main installation function
 main() {
+    clear
+    
     log "Starting CloudStack 4.20.0 installation..."
     
     check_root
+    check_architecture
     set_root_password
 
     echo -e "${BLUE}"
     echo "======================================="
     echo "    CloudStack 4.20.0 Installation    "
+    echo "         Architecture: ${ARCH}        "
     echo "======================================="
     echo -e "${NC}"
     
@@ -563,6 +805,7 @@ main() {
     install_systemvm
     install_cloudstack_agent
     
+    launch_cloudstack
     display_final_info
 }
 
@@ -570,6 +813,9 @@ main() {
 case "${1:-}" in
     --fix-secondary)
         fix_secondary_not_found
+        ;;
+    --network_settings)
+        network_settings
         ;;
     --help)
         echo "Usage: $0 [OPTIONS]"
