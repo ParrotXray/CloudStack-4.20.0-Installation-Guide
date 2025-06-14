@@ -18,6 +18,8 @@ NC='\033[0m' # No Color
 # Global variables for architecture
 ARCH=""
 SYSTEMVM_URL=""
+IS_UEFI=false
+BOOT_TYPE=""
 
 # Logging function
 log() {
@@ -63,6 +65,26 @@ prompt_input() {
     fi
     
     eval "$var_name='$input'"
+}
+
+# Check UEFI boot mode
+check_uefi_boot() {
+    log "Detecting boot mode (BIOS/UEFI)..."
+
+    # Check /sys/firmware/efi directory
+    if [ -d "/sys/firmware/efi" ]; then
+        IS_UEFI=true
+        BOOT_TYPE="UEFI"
+        log "UEFI boot mode detected"
+    else
+        IS_UEFI=false
+        BOOT_TYPE="Legacy BIOS"
+        log "Legacy BIOS boot mode detected"
+    fi
+
+    info "Boot Type: $BOOT_TYPE"
+
+    # return 0
 }
 
 # Check CPU architecture and set appropriate variables
@@ -520,14 +542,42 @@ install_systemvm() {
 install_cloudstack_agent() {
     log "Installing CloudStack Agent..."
     
-    apt install qemu-kvm cloudstack-agent -y
+    apt install cloudstack-agent -y
     systemctl enable cloudstack-agent.service
 
     # Stop the automatic start after install
     systemctl stop cloudstack-agent
+
+    cp /etc/libvirt/qemu.conf /etc/libvirt/qemu.conf.backup
     
     # Configure QEMU
     sed -i 's/#vnc_listen = "0.0.0.0"/vnc_listen = "0.0.0.0"/' /etc/libvirt/qemu.conf
+    
+    # Configure NVRAM settings based on boot mode and architecture
+    if [ "$IS_UEFI" = true ]; then
+        log "Configuring QEMU for UEFI support..."
+        
+        if [ "$ARCH" = "amd64" ]; then
+            # Configure NVRAM for x86_64 UEFI
+            sed -i '/^#nvram = \[/,/^#\]/c\
+nvram = [\
+  "/usr/share/OVMF/OVMF_CODE_4M.fd:/usr/share/OVMF/OVMF_VARS_4M.fd",\
+  "/usr/share/OVMF/OVMF_CODE_4M.secboot.fd:/usr/share/OVMF/OVMF_VARS_4M.fd",\
+  "/usr/share/OVMF/OVMF_CODE_4M.ms.fd:/usr/share/OVMF/OVMF_VARS_4M.ms.fd",\
+  "/usr/share/OVMF/OVMF_CODE.fd:/usr/share/OVMF/OVMF_VARS.fd"\
+]' /etc/libvirt/qemu.conf
+#         elif [ "$ARCH" = "aarch64" ]; then
+#             # Configure NVRAM for ARM64 UEFI
+#             sed -i '/^#nvram = \[/,/^#\]/c\
+# nvram = [\
+#   "/usr/share/AAVMF/AAVMF_CODE.fd:/usr/share/AAVMF/AAVMF_VARS.fd"\
+# ]' /etc/libvirt/qemu.conf
+        fi
+        
+        info "QEMU configured for UEFI boot support"
+    else
+        info "QEMU configured for Legacy BIOS boot support"
+    fi
     
     # Configure libvirtd
     sed -i 's/#listen_tls = 0/listen_tls = 0/' /etc/libvirt/libvirtd.conf
@@ -553,6 +603,60 @@ install_cloudstack_agent() {
     ln -s /etc/apparmor.d/usr.lib.libvirt.virt-aa-helper /etc/apparmor.d/disable/ 2>/dev/null || true
     apparmor_parser -R /etc/apparmor.d/usr.sbin.libvirtd 2>/dev/null || true
     apparmor_parser -R /etc/apparmor.d/usr.lib.libvirt.virt-aa-helper 2>/dev/null || true
+
+    # Create the UEFI properties file
+    UEFI_PROPS_FILE="/etc/cloudstack/agent/uefi.properties"
+    
+    if [ "$IS_UEFI" = true ] && [ "$ARCH" = "amd64" ]; then
+        log "Creating UEFI properties for x86_64 architecture..."
+        
+        cat > "$UEFI_PROPS_FILE" << 'EOF'
+# CloudStack Agent UEFI Configuration
+# This file configures UEFI boot support for virtual machines
+
+# Secure boot mode (for Windows 11, modern Linux with Secure Boot)
+guest.nvram.template.secure=/usr/share/OVMF/OVMF_VARS_4M.ms.fd
+guest.loader.secure=/usr/share/OVMF/OVMF_CODE_4M.secboot.fd
+
+# Legacy UEFI mode (standard UEFI without Secure Boot)
+guest.nvram.template.legacy=/usr/share/OVMF/OVMF_VARS_4M.fd
+guest.loader.legacy=/usr/share/OVMF/OVMF_CODE_4M.fd
+
+# NVRAM storage path (where VM-specific UEFI variables are stored)
+guest.nvram.path=/var/lib/libvirt/qemu/nvram/
+
+# Alternative OVMF paths (fallback options)
+guest.nvram.template.fallback=/usr/share/OVMF/OVMF_VARS.fd
+guest.loader.fallback=/usr/share/OVMF/OVMF_CODE.fd
+EOF
+#     elif [ "$IS_UEFI" = true ] && [ "$ARCH" = "aarch64" ]; then
+#         log "Creating UEFI properties for ARM64 architecture..."
+        
+#         cat > "$UEFI_PROPS_FILE" << 'EOF'
+# # CloudStack Agent UEFI Configuration for ARM64
+# # This file configures UEFI boot support for ARM64 virtual machines
+
+# # ARM64 UEFI mode
+# guest.nvram.template.legacy=/usr/share/AAVMF/AAVMF_VARS.fd
+# guest.loader.legacy=/usr/share/AAVMF/AAVMF_CODE.fd
+
+# # NVRAM storage path
+# guest.nvram.path=/var/lib/libvirt/qemu/nvram/
+# EOF
+    else
+        log "Creating minimal UEFI properties for Legacy BIOS mode..."
+        
+        cat > "$UEFI_PROPS_FILE" << 'EOF'
+# CloudStack Agent UEFI Configuration (Legacy BIOS Mode)
+# Host is running in Legacy BIOS mode - UEFI VMs not supported
+
+# NVRAM storage path (not used in BIOS mode but kept for compatibility)
+guest.nvram.path=/var/lib/libvirt/qemu/nvram/
+
+# Note: UEFI VM creation will not be available on this host
+# Only Legacy BIOS VMs are supported
+EOF
+    fi
     
     log "CloudStack Agent installed successfully"
 }
@@ -779,6 +883,7 @@ main() {
     log "Starting CloudStack 4.20.0 installation..."
     
     check_root
+    check_uefi_boot
     check_architecture
     set_root_password
 
@@ -786,6 +891,7 @@ main() {
     echo "======================================="
     echo "    CloudStack 4.20.0 Installation    "
     echo "         Architecture: ${ARCH}        "
+    echo "         Boot Mode: ${BOOT_TYPE}      "
     echo "======================================="
     echo -e "${NC}"
     
