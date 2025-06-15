@@ -594,53 +594,43 @@ A public IP address is required to do this
 ## Steps
 1. Click on **"Infrastructure"** on the left side, then click on **"System VMs"** to enter this screen
 
-![image]
+![image](https://github.com/user-attachments/assets/017e260d-15cf-4f25-80fb-76da21db55a4)
 
 2. Copy the **"IP address"** next to **"consoleproxy"**
-
-![image]
+![image](https://github.com/user-attachments/assets/522dc785-0540-4d66-8db3-8fc163436de5)
 
 3. Go into the router and use the copied **"IP address"** to set up **"port forwarding"**
-
-![image]
+![image3](https://github.com/user-attachments/assets/27a441ea-710a-4967-8aef-c8efe84a9a62)
 
 4. Need to open ports `80` and `8080`. If using HTTPS, also need to open ports `443` and `8443`
-
-![image]
+![image](https://github.com/user-attachments/assets/522dc785-0540-4d66-8db3-8fc163436de5)
 
 5. Now, to access View Console, simply replace the **"internal IP"** in the URL with the **"public IP"**
-
-![image]
+![螢幕擷取畫面 2025-06-15 203242](https://github.com/user-attachments/assets/be42db74-b6dd-4cf7-930b-e3c00b515036)
 
 **The following items are optional because they require a domain name to use**
 
 6. Click on **"Configuration"** on the left side, then click on **"Global Settings"** to enter this screen
-
-![image]
+![image](https://github.com/user-attachments/assets/c34f63e2-5ce1-4ecf-bab6-c272777ed400)
 
 7. Search for **"Consoleproxy"** in the search bar
-
-![image]
+![image](https://github.com/user-attachments/assets/b498fd27-3b50-48f2-a267-d59ead39073f)
 
 8. Scroll down to find the **"Consoleproxy URL domain (consoleproxy.url.domain)"** item
-
-![image]
+![image](https://github.com/user-attachments/assets/02e04842-eaed-41dd-8344-efde8d7e0457)
 
 9. Enter a valid `domain name`. Note that this field only accepts valid **domain names and local IP addresses**.
-
-![image]
+![image](https://github.com/user-attachments/assets/1044155b-26d3-4e55-a0b5-df2f688fc35a)
 
 10. If HTTPS connection is required, enable **"Consoleproxy SSL Enabled (consoleproxy.sslEnabled)"**
-
-![image]
+![image](https://github.com/user-attachments/assets/6f5c6678-b0f9-4c29-b4a1-8f0b8d4db0d9)
 
 11. After entering, press Enter and then restart the service
 ```bash=
 systemctl restart cloudstack-management
 ```
 12. Now, with this setup, you no longer need to manually replace the IP address to access View Console
-
-![image]
+![image](https://github.com/user-attachments/assets/d95d4b2d-d7fd-450f-bb02-c4b7d199886c)
 
 # Some Problem Solutions
 ## Secondary Not Found
