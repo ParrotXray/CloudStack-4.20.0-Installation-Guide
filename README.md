@@ -573,20 +573,19 @@ systemctl restart libvirtd cloudstack-agent cloudstack-management
 ```
 6. Click on **"Infrastructure"** on the left side, then click on **"Host"** to enter this screen
 
-![image]
+![image](https://github.com/user-attachments/assets/b7638e33-509f-41cc-9410-6665ea5eca94)
 
 7. Click on the host in use to enter this screen
 
-![image]
+![image](https://github.com/user-attachments/assets/1b8fedf2-668d-40a2-9655-8eb67d5d2fef)
 
 8. Find **"UEFI supported"** below the **"Details"** section; if it shows true, it means the setup was successful
 
-![image]
+![image](https://github.com/user-attachments/assets/9857674c-0d3c-4992-ad1c-9775622c24ae)
 
 9. When creating an **"instance"**, enable **"Advanced"** mode and select **"UEFI"** as the **"Boot type"**
 
-![image]
-
+![image](https://github.com/user-attachments/assets/95a2d966-e338-4a4f-ba85-28b1dcfd5cbe)
 
 # Some Problem Solutions
 ## Secondary Not Found
