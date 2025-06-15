@@ -606,7 +606,7 @@ A public IP address is required to do this
 
 4. Need to open ports `80` and `8080`. If using HTTPS, also need to open ports `443` and `8443`
 
-![image](https://github.com/user-attachments/assets/522dc785-0540-4d66-8db3-8fc163436de5)
+![image](https://github.com/user-attachments/assets/6dcbd0c4-ae53-4715-88f9-19dcb31d3efa)
 
 5. Now, to access View Console, simply replace the **"internal IP"** in the URL with the **"public IP"**
 
