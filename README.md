@@ -201,11 +201,11 @@ systemctl start mysql.service
 ```bash=
 mysql -u root
 ```
-```sql
-ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password by 'mysqlRootPassword';
+```sql=
+ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password by '$mysqlRootPassword';
 exit
 ```
-Replace **mysqlRootPassword** with the root password you want to change
+Replace **$mysqlRootPassword** with the root password you want to change
 
 7. Run the **`mysql_secure_installation`** command and answer the prompts as follows:
 - Enter the password you just set for the MySQL root user.
@@ -587,6 +587,61 @@ systemctl restart libvirtd cloudstack-agent cloudstack-management
 
 ![image](https://github.com/user-attachments/assets/95a2d966-e338-4a4f-ba85-28b1dcfd5cbe)
 
+# Access the VM via the public network
+## Requirement
+A public IP address is required to do this
+
+## Steps
+1. Click on **"Infrastructure"** on the left side, then click on **"System VMs"** to enter this screen
+
+![image]
+
+2. Copy the **"IP address"** next to **"consoleproxy"**
+
+![image]
+
+3. Go into the router and use the copied **"IP address"** to set up **"port forwarding"**
+
+![image]
+
+4. Need to open ports `80` and `8080`. If using HTTPS, also need to open ports `443` and `8443`
+
+![image]
+
+5. Now, to access View Console, simply replace the **"internal IP"** in the URL with the **"public IP"**
+
+![image]
+
+**The following items are optional because they require a domain name to use**
+
+6. Click on **"Configuration"** on the left side, then click on **"Global Settings"** to enter this screen
+
+![image]
+
+7. Search for **"Consoleproxy"** in the search bar
+
+![image]
+
+8. Scroll down to find the **"Consoleproxy URL domain (consoleproxy.url.domain)"** item
+
+![image]
+
+9. Enter a valid `domain name`. Note that this field only accepts valid **domain names and local IP addresses**.
+
+![image]
+
+10. If HTTPS connection is required, enable **"Consoleproxy SSL Enabled (consoleproxy.sslEnabled)"**
+
+![image]
+
+11. After entering, press Enter and then restart the service
+```bash=
+systemctl restart cloudstack-management
+```
+12. Now, with this setup, you no longer need to manually replace the IP address to access View Console
+
+![image]
+
 # Some Problem Solutions
 ## Secondary Not Found
 If you encounter the **"Secondary not found"**, you can try the following steps to resolve it:
@@ -611,3 +666,4 @@ systemctl restart cloudstack-agent.service
 # Reference
 - https://hackmd.io/@DaLaw2/HJNA0hSA6
 - https://rohityadav.cloud/blog/cloudstack-kvm/
+- https://cwiki.apache.org/confluence/display/CLOUDSTACK/Enable+UEFI+booting+for+Instance
