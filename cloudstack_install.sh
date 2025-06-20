@@ -568,12 +568,12 @@ nvram = [\
   "/usr/share/OVMF/OVMF_CODE.secboot.fd:/usr/share/OVMF/OVMF_VARS.fd",\
   "/usr/share/OVMF/OVMF_CODE.ms.fd:/usr/share/OVMF/OVMF_VARS.ms.fd"\
 ]' /etc/libvirt/qemu.conf
-#         elif [ "$ARCH" = "aarch64" ]; then
-#             # Configure NVRAM for ARM64 UEFI
-#             sed -i '/^#nvram = \[/,/^#\]/c\
-# nvram = [\
-#   "/usr/share/AAVMF/AAVMF_CODE.fd:/usr/share/AAVMF/AAVMF_VARS.fd"\
-# ]' /etc/libvirt/qemu.conf
+        elif [ "$ARCH" = "aarch64" ]; then
+            # Configure NVRAM for ARM64 UEFI
+            sed -i '/^#nvram = \[/,/^#\]/c\
+nvram = [\
+  "/usr/share/AAVMF/AAVMF_CODE.fd:/usr/share/AAVMF/AAVMF_VARS.fd"\
+]' /etc/libvirt/qemu.conf
         fi
         
         info "QEMU configured for UEFI boot support"
@@ -631,20 +631,20 @@ guest.nvram.path=/var/lib/libvirt/qemu/nvram/
 guest.nvram.template.fallback=/usr/share/OVMF/OVMF_VARS.fd
 guest.loader.fallback=/usr/share/OVMF/OVMF_CODE.fd
 EOF
-#     elif [ "$IS_UEFI" = true ] && [ "$ARCH" = "aarch64" ]; then
-#         log "Creating UEFI properties for ARM64 architecture..."
+    elif [ "$IS_UEFI" = true ] && [ "$ARCH" = "aarch64" ]; then
+        log "Creating UEFI properties for ARM64 architecture..."
         
-#         cat > "$UEFI_PROPS_FILE" << 'EOF'
-# # CloudStack Agent UEFI Configuration for ARM64
-# # This file configures UEFI boot support for ARM64 virtual machines
+        cat > "$UEFI_PROPS_FILE" << 'EOF'
+# CloudStack Agent UEFI Configuration for ARM64
+# This file configures UEFI boot support for ARM64 virtual machines
 
-# # ARM64 UEFI mode
-# guest.nvram.template.legacy=/usr/share/AAVMF/AAVMF_VARS.fd
-# guest.loader.legacy=/usr/share/AAVMF/AAVMF_CODE.fd
+# ARM64 UEFI mode
+guest.nvram.template.legacy=/usr/share/AAVMF/AAVMF_VARS.fd
+guest.loader.legacy=/usr/share/AAVMF/AAVMF_CODE.fd
 
-# # NVRAM storage path
-# guest.nvram.path=/var/lib/libvirt/qemu/nvram/
-# EOF
+# NVRAM storage path
+guest.nvram.path=/var/lib/libvirt/qemu/nvram/
+EOF
     else
         log "Creating minimal UEFI properties for Legacy BIOS mode..."
         
