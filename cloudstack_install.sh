@@ -1,9 +1,9 @@
 #!/bin/bash
 
 # CloudStack 4.20.0 Installation Script
-# Author: Auto-generated
+# Author: ParrotXray
 # Date: $(date)
-# OS: Ubuntu 24.04
+# Support OS: Ubuntu 24.04
 
 set -e  # Exit on any error
 
@@ -16,6 +16,7 @@ LIGHT_CYAN='\033[1;36m'
 NC='\033[0m' # No Color
 
 # Global variables for architecture
+OS_VERSION="24.04"
 ARCH=""
 SYSTEMVM_URL=""
 IS_UEFI=false
@@ -46,6 +47,60 @@ check_root() {
     fi
 }
 
+# General package installation function
+ensure_packages() {
+    local packages_needed=()
+    local all_packages=("$@")
+    
+    if [ ${#all_packages[@]} -eq 0 ]; then
+        warning "No packages specified for installation check"
+        return 1
+    fi
+    
+    log "Checking packages: ${all_packages[*]}"
+    
+    for package in "${all_packages[@]}"; do
+        if ! dpkg-query -W -f='${Status}' "$package" 2>/dev/null | grep -q "install ok installed"; then
+            packages_needed+=("$package")
+            info "Package '$package' needs to be installed"
+        else
+            info "Package '$package' already installed"
+        fi
+    done
+    
+    if [ ${#packages_needed[@]} -gt 0 ]; then
+        log "Installing missing packages: ${packages_needed[*]}"
+        
+        if ! apt update; then
+            error "Failed to update package list"
+            return 1
+        fi
+        
+        if apt install "${packages_needed[@]}" -y; then
+            log "Packages installed successfully: ${packages_needed[*]}"
+            
+            local failed_packages=()
+            for package in "${packages_needed[@]}"; do
+                if ! dpkg-query -W -f='${Status}' "$package" 2>/dev/null | grep -q "install ok installed"; then
+                    failed_packages+=("$package")
+                fi
+            done
+            
+            if [ ${#failed_packages[@]} -gt 0 ]; then
+                error "Installation verification failed for: ${failed_packages[*]}"
+                return 1
+            fi
+        else
+            error "Failed to install packages: ${packages_needed[*]}"
+            return 1
+        fi
+    else
+        log "All requested packages are already installed, skipping..."
+    fi
+    
+    return 0
+}
+
 # Function to prompt for user input
 prompt_input() {
     local prompt="$1"
@@ -67,12 +122,17 @@ prompt_input() {
     eval "$var_name='$input'"
 }
 
-# Check UEFI boot mode
-check_uefi_boot() {
-    log "Detecting boot mode (BIOS/UEFI)..."
+# Check UEFI/BIOS/U-Boot boot mode
+check_boot_mode() {
+    log "Detecting boot mode (BIOS/UEFI/U-Boot)..."
 
-    # Check /sys/firmware/efi directory
-    if [ -d "/sys/firmware/efi" ]; then
+    # Check for U-Boot first (ARM devices often use U-Boot)
+    if [ -f "/proc/device-tree/chosen/bootargs" ] || [ -d "/proc/device-tree" ]; then
+        IS_UEFI=false
+        BOOT_TYPE="U-Boot"
+        log "U-Boot boot mode detected (Device Tree found)"
+    # Check /sys/firmware/efi directory for UEFI
+    elif [ -d "/sys/firmware/efi" ]; then
         IS_UEFI=true
         BOOT_TYPE="UEFI"
         log "UEFI boot mode detected"
@@ -83,8 +143,47 @@ check_uefi_boot() {
     fi
 
     info "Boot Type: $BOOT_TYPE"
+}
 
-    # return 0
+check_system_requirements() {
+    log "Checking system requirements..."
+
+    # OS Check
+    if [ -f /etc/debian_version ]; then
+        ensure_packages lsb-release
+        
+        local distro=$(lsb_release -i -s)
+        local version=$(lsb_release -r -s)
+        local codename=$(lsb_release -c -s)
+        
+        if [[ "$distro" != "Ubuntu" ]]; then
+            error "Distribution '$distro' is not supported"
+            echo "Required: Ubuntu $OS_VERSION"
+            exit 1
+        fi
+        
+        if [[ "$version" != "$OS_VERSION" ]]; then
+            error "Ubuntu $version is not supported"
+            echo "Required: Ubuntu $OS_VERSION"
+            echo "Current:  Ubuntu $version ($codename)"
+            exit 1
+        fi
+        
+        log "Ubuntu $version ($codename) - supported"
+        
+    elif [ -f /etc/redhat-release ]; then
+        local redhat_version=$(cat /etc/redhat-release)
+        error "Red Hat-based system detected: $redhat_version"
+        echo "This script requires Ubuntu $OS_VERSION"
+        exit 1
+        
+    else
+        error "Unsupported operating system"
+        echo "This script requires Ubuntu $OS_VERSION"
+        exit 1
+    fi
+
+    log "System requirements check passed"
 }
 
 # Check CPU architecture and set appropriate variables
@@ -256,7 +355,7 @@ install_requirements() {
     log "Installing basic requirements..."
     
     apt update
-    apt install vim openntpd -y
+    ensure_packages vim openntpd
     
     log "Basic requirements installed successfully"
 }
@@ -265,7 +364,7 @@ install_requirements() {
 install_ssh() {
     log "Installing and configuring SSH..."
     
-    apt install openssh-server -y
+    ensure_packages openssh-server
     
     # Backup original sshd_config
     cp /etc/ssh/sshd_config /etc/ssh/sshd_config.backup
@@ -289,7 +388,7 @@ EOF
 configure_network() {
     log "Configuring network..."
     
-    apt install net-tools bridge-utils -y
+    ensure_packages net-tools bridge-utils
     
     # Get current netplan files
     NETPLAN_FILES=($(ls /etc/netplan/*.yaml 2>/dev/null || echo))
@@ -400,7 +499,7 @@ EOF
 install_nfs() {
     log "Installing and configuring NFS..."
     
-    apt install nfs-kernel-server nfs-common -y
+    ensure_packages nfs-kernel-server nfs-common
     
     # Create NFS directories
     mkdir -p /export
@@ -441,7 +540,7 @@ EOF
 install_mysql() {
     log "Installing and configuring MySQL..."
     
-    apt install mysql-server -y
+    ensure_packages mysql-server
     
     # Configure MySQL for CloudStack
     cat > /etc/mysql/conf.d/cloudstack.cnf << EOF
@@ -468,7 +567,7 @@ secure_mysql() {
     log "Running MySQL secure installation..."
     
     # Use expect to automate mysql_secure_installation
-    apt install expect -y
+    ensure_packages expect
     
     expect -c "
     spawn mysql_secure_installation
@@ -505,7 +604,7 @@ install_cloudstack_management() {
     echo deb [signed-by=/etc/apt/keyrings/cloudstack.gpg] http://packages.shapeblue.com/cloudstack/upstream/debian/4.20 / > /etc/apt/sources.list.d/cloudstack.list
     
     apt update
-    apt install cloudstack-management cloudstack-usage -y
+    ensure_packages cloudstack-management cloudstack-usage
     
     # Setup CloudStack database
     cloudstack-setup-databases cloud:${MYSQL_CLOUD_PASSWORD}@localhost \
@@ -542,7 +641,7 @@ install_systemvm() {
 install_cloudstack_agent() {
     log "Installing CloudStack Agent..."
     
-    apt install cloudstack-agent -y
+    ensure_packages cloudstack-agent
     systemctl enable cloudstack-agent.service
 
     # Stop the automatic start after install
@@ -743,7 +842,7 @@ select_network_mode() {
 }
 
 set_network_mode () {
-    apt install net-tools bridge-utils -y
+    ensure_packages net-tools bridge-utils
     
     select_interface
 
@@ -918,6 +1017,8 @@ main() {
 }
 
 # Handle script arguments
+check_system_requirements
+
 case "${1:-}" in
     --fix-secondary)
         fix_secondary_not_found

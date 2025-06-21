@@ -105,7 +105,7 @@ chown root:root /etc/netplan/01-network-manager-all.yaml
 ```
 6. Check the configuration by running the following command:
 ```bash=
-netplan try
+netplan generate
 ```
 If there are no errors, apply the configuration by running the following command:
 ```bash=
@@ -218,8 +218,10 @@ Replace **$mysqlRootPassword** with the root password you want to change
 
 8. Add the CloudStack Management package to the apt source with the following commands:
 ```bash=
-echo deb http://download.cloudstack.org/ubuntu noble 4.20 > /etc/apt/sources.list.d/cloudstack.list
-wget -O - http://download.cloudstack.org/release.asc|apt-key add -
+mkdir -p /etc/apt/keyrings
+wget -O- http://packages.shapeblue.com/release.asc | gpg --dearmor | sudo tee /etc/apt/keyrings/cloudstack.gpg > /dev/null
+
+echo deb [signed-by=/etc/apt/keyrings/cloudstack.gpg] http://packages.shapeblue.com/cloudstack/upstream/debian/4.20 / > /etc/apt/sources.list.d/cloudstack.list
 ```
 9. Update apt with the following command:
 ```bash=
@@ -538,7 +540,7 @@ The host system **must be installed in UEFI mode**.
 
 You can verify the current boot mode using the following command:
 ```bash=
-test -d /sys/firmware/efi && echo "UEFI boot mode" || echo "Legacy BIOS boot"
+test -d /proc/device-tree && echo "U-Boot mode" || (test -d /sys/firmware/efi && echo "UEFI boot mode" || echo "Legacy BIOS boot")
 ```
 ## Configuration file
 1. Configure QEMU by editing the `qemu.conf` file with the following command:
