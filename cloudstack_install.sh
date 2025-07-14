@@ -316,12 +316,12 @@ generate_secure_key() {
     echo "${prefix}-$(date +%Y%m%d)-$(openssl rand -hex 8)"
 }
 
-# Collect MySQL passwords
-collect_mysql_config() {
-    log "Collecting MySQL configuration..."
+# Collect MariaDB passwords
+collect_mariadb_config() {
+    log "Collecting MariaDB configuration..."
     
-    prompt_input "Enter MySQL root password" "MYSQL_ROOT_PASSWORD"
-    prompt_input "Enter MySQL cloud user password" "MYSQL_CLOUD_PASSWORD"
+    prompt_input "Enter MariaDB root password" "MARIADB_ROOT_PASSWORD"
+    prompt_input "Enter MariaDB cloud user password" "MARIADB_CLOUD_PASSWORD"
     
     # Generate suggested keys
     SUGGESTED_MGT_KEY=$(generate_secure_key "CS-MGT")
@@ -339,8 +339,8 @@ CloudStack Installation Keys - $(date)
 =====================================
 Management Server Key: ${MANAGEMENT_SERVER_KEY}
 Database Key: ${DATABASE_KEY}
-MySQL Root Password: ${MYSQL_ROOT_PASSWORD}
-MySQL Cloud Password: ${MYSQL_CLOUD_PASSWORD}
+MariaDB Root Password: ${MARIADB_ROOT_PASSWORD}
+MariaDB Cloud Password: ${MARIADB_CLOUD_PASSWORD}
 
 IMPORTANT: Keep this file secure and backed up!
 These keys are required for CloudStack operation.
@@ -536,49 +536,79 @@ EOF
     log "NFS configured successfully"
 }
 
-# Install and configure MySQL
-install_mysql() {
-    log "Installing and configuring MySQL..."
+# Install and configure MariaDB
+install_mariadb() {
+    log "Installing and configuring MariaDB..."
     
-    ensure_packages mysql-server
+    # Install MariaDB
+    ensure_packages mariadb-server mariadb-client
     
-    # Configure MySQL for CloudStack
-    cat > /etc/mysql/conf.d/cloudstack.cnf << EOF
+    # Configure MariaDB for CloudStack
+    cat > /etc/mysql/mariadb.conf.d/99-cloudstack.cnf << EOF
 [mysqld]
+# CloudStack specific configuration
 server-id=master-01
 innodb_rollback_on_timeout=1
 innodb_lock_wait_timeout=600
 max_connections=350
 log-bin=mysql-bin
 binlog-format = 'ROW'
+
+# Performance optimization
+innodb_buffer_pool_size = 256M
+innodb_log_file_size = 64M
+innodb_flush_log_at_trx_commit = 2
+innodb_file_per_table = 1
+
+# Character set
+character-set-server = utf8mb4
+collation-server = utf8mb4_unicode_ci
+
+# Networking
+bind-address = 0.0.0.0
+
+# SQL Mode (compatible with CloudStack)
+sql_mode = "STRICT_TRANS_TABLES,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO"
 EOF
     
-    systemctl enable mysql.service
-    systemctl start mysql.service
+    systemctl enable mariadb.service
+    systemctl start mariadb.service
     
-    # Set MySQL root password
-    mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password by '${MYSQL_ROOT_PASSWORD}';"
+    # Wait for MariaDB to be ready
+    sleep 5
     
-    log "MySQL configured successfully"
+    # Set MariaDB root password
+    log "Setting MariaDB root password..."
+    mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '${MARIADB_ROOT_PASSWORD}';"
+    
+    # Verify connection with new password
+    if mysql -u root -p"${MARIADB_ROOT_PASSWORD}" -e "SELECT VERSION();" >/dev/null 2>&1; then
+        log "MariaDB root password set successfully"
+    else
+        error "Failed to set MariaDB root password"
+        exit 1
+    fi
+    
+    log "MariaDB configured successfully"
 }
 
-# Run MySQL secure installation
-secure_mysql() {
-    log "Running MySQL secure installation..."
+# Run MariaDB secure installation
+secure_mariadb() {
+    log "Running MariaDB secure installation..."
     
-    # Use expect to automate mysql_secure_installation
+    # Use expect to automate mariadb-secure-installation
     ensure_packages expect
     
     expect -c "
-    spawn mysql_secure_installation
-    expect \"Enter password for user root:\"
-    send \"${MYSQL_ROOT_PASSWORD}\r\"
-    expect \"Press y|Y for Yes, any other key for No:\"
+    spawn mariadb-secure-installation
+    expect \"Enter current password for root (enter for none):\"
+    send \"${MARIADB_ROOT_PASSWORD}\r\"
+    expect \"Switch to unix_socket authentication\"
     send \"n\r\"
-    expect \"Change the password for root ?\"
+    expect \"Change the root password?\"
     send \"n\r\"
     expect \"Remove anonymous users?\"
-    send \"n\r\"
+    send \"y\r\"
     expect \"Disallow root login remotely?\"
     send \"y\r\"
     expect \"Remove test database and access to it?\"
@@ -588,7 +618,17 @@ secure_mysql() {
     expect eof
     "
     
-    log "MySQL secured successfully"
+    # Create cloud user for CloudStack
+    log "Creating cloud database user..."
+    mysql -u root -p"${MARIADB_ROOT_PASSWORD}" -e "
+    CREATE USER IF NOT EXISTS 'cloud'@'localhost' IDENTIFIED BY '${MARIADB_CLOUD_PASSWORD}';
+    CREATE USER IF NOT EXISTS 'cloud'@'%' IDENTIFIED BY '${MARIADB_CLOUD_PASSWORD}';
+    GRANT ALL PRIVILEGES ON *.* TO 'cloud'@'localhost' WITH GRANT OPTION;
+    GRANT ALL PRIVILEGES ON *.* TO 'cloud'@'%' WITH GRANT OPTION;
+    FLUSH PRIVILEGES;
+    "
+    
+    log "MariaDB secured and cloud user created successfully"
 }
 
 # Install CloudStack Management
@@ -596,9 +636,6 @@ install_cloudstack_management() {
     log "Installing CloudStack Management..."
     
     # Add CloudStack repository
-    # echo "deb http://download.cloudstack.org/ubuntu noble 4.20" > /etc/apt/sources.list.d/cloudstack.list
-    # wget -O - http://download.cloudstack.org/release.asc | apt-key add -
-
     mkdir -p /etc/apt/keyrings
     wget -O- http://packages.shapeblue.com/release.asc | gpg --dearmor | sudo tee /etc/apt/keyrings/cloudstack.gpg > /dev/null
     echo deb [signed-by=/etc/apt/keyrings/cloudstack.gpg] http://packages.shapeblue.com/cloudstack/upstream/debian/4.20 / > /etc/apt/sources.list.d/cloudstack.list
@@ -607,8 +644,8 @@ install_cloudstack_management() {
     ensure_packages cloudstack-management cloudstack-usage
     
     # Setup CloudStack database
-    cloudstack-setup-databases cloud:${MYSQL_CLOUD_PASSWORD}@localhost \
-        --deploy-as=root:${MYSQL_ROOT_PASSWORD} \
+    cloudstack-setup-databases cloud:${MARIADB_CLOUD_PASSWORD}@localhost \
+        --deploy-as=root:${MARIADB_ROOT_PASSWORD} \
         -e file \
         -m ${MANAGEMENT_SERVER_KEY} \
         -k ${DATABASE_KEY} \
@@ -778,6 +815,7 @@ display_final_info() {
     echo -e "\n${GREEN}=== Installation Summary ===${NC}"
     info "CloudStack Management Server: http://${LANIP}:8080"
     info "Default login: admin/password"
+    info "Database: MariaDB"
     info "Keys file: /root/cloudstack_keys.txt"
     
     echo -e "\n${YELLOW}=== Next Steps ===${NC}"
@@ -789,7 +827,7 @@ display_final_info() {
     echo "   - Primary Storage: nfs://${LANIP}/export/primary"
     echo "   - Secondary Storage: nfs://${LANIP}/export/secondary"
     
-    echo -e "\n${GREEN}Installation completed successfully!${NC}"
+    echo -e "\n${GREEN}Installation completed successfully with MariaDB!${NC}"
 }
 
 # Troubleshooting function
@@ -977,27 +1015,56 @@ set_root_password() {
     done
 }
 
+# Check MariaDB status and connection
+check_mariadb_status() {
+    log "Checking MariaDB installation and status..."
+    
+    if ! systemctl is-active --quiet mariadb; then
+        warning "MariaDB is not running. Starting MariaDB..."
+        systemctl start mariadb
+        sleep 3
+    fi
+    
+    if systemctl is-active --quiet mariadb; then
+        log "MariaDB is running successfully"
+        
+        # Show MariaDB version
+        MARIADB_VERSION=$(mysql --version | awk '{print $5}' | sed 's/,//')
+        info "MariaDB Version: $MARIADB_VERSION"
+        
+        # Show databases
+        if [ -n "${MARIADB_ROOT_PASSWORD:-}" ]; then
+            info "CloudStack databases:"
+            mysql -u root -p"${MARIADB_ROOT_PASSWORD}" -e "SHOW DATABASES LIKE 'cloud%';" 2>/dev/null || true
+        fi
+    else
+        error "MariaDB failed to start"
+        return 1
+    fi
+}
+
 # Main installation function
 main() {
     clear
     
-    log "Starting CloudStack 4.20.0 installation..."
+    log "Starting CloudStack 4.20.0 installation with MariaDB..."
     
     check_root
-    check_uefi_boot
+    check_boot_mode
     check_architecture
     set_root_password
 
     echo -e "${BLUE}"
     echo "======================================="
     echo "    CloudStack 4.20.0 Installation    "
+    echo "         Database: MariaDB             "
     echo "         Architecture: ${ARCH}        "
     echo "         Boot Mode: ${BOOT_TYPE}      "
     echo "======================================="
     echo -e "${NC}"
     
     collect_network_config
-    collect_mysql_config
+    collect_mariadb_config
     
     echo -e "\n${YELLOW}Starting installation with collected configuration...${NC}"
     read -p "Press Enter to continue or Ctrl+C to abort..."
@@ -1006,12 +1073,13 @@ main() {
     install_ssh
     configure_network
     install_nfs
-    install_mysql
-    secure_mysql
+    install_mariadb
+    secure_mariadb
     install_cloudstack_management
     install_systemvm
     install_cloudstack_agent
     
+    check_mariadb_status
     launch_cloudstack
     display_final_info
 }
@@ -1026,10 +1094,15 @@ case "${1:-}" in
     --network_settings)
         network_settings
         ;;
+    --check-mariadb)
+        check_mariadb_status
+        ;;
     --help)
         echo "Usage: $0 [OPTIONS]"
         echo "Options:"
         echo "  --fix-secondary     Fix 'Secondary not found' issue"
+        echo "  --network_settings  Configure network settings only"
+        echo "  --check-mariadb     Check MariaDB status and configuration"
         echo "  --help             Show this help message"
         ;;
     *)
