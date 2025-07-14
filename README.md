@@ -1,31 +1,31 @@
 # CloudStack 4.20.0 Installation Guide
 ## Requirement
-- OS: Ubuntu 24.04
-- Architecture: amd64, ~~aarch64~~
+- Support OS: Ubuntu 24.04
+- Architecture: amd64, aarch64
 
 Please enter the root environment first:
-```bash
+```bash=
 sudo su
 ```
 To install these packages, run the following command:
-```bash
+```bash=
 apt install vim openntpd -y
 ```
 
 ## Quick installation
 Using the shell
-```bash
+```bash=
 bash -c "$(curl -fsSL https://raw.githubusercontent.com/ParrotXray/CloudStack-4.20.0-Installation-Guide/refs/heads/main/cloudstack_install.sh)"
 ```
 
 # Installation
 ## Install SSH
 1. Install SSH by running the following command:
-```bash
+```bash=
 apt install openssh-server -y
 ```
 2. Configure the SSH configuration file by editing it with the following command:
-```bash
+```bash=
 vim /etc/ssh/sshd_config
 ```
 3. Append the following lines to the end of the file:
@@ -38,7 +38,7 @@ KexAlgorithms=+diffie-hellman-group1-sha1
 ```
 4. Save the file and exit.
 5. Restart the SSH service to apply the new configuration:
-```bash
+```bash=
 systemctl restart ssh
 ```
 
@@ -46,20 +46,20 @@ systemctl restart ssh
 Before configuring the network, you need to install some required packages.
 
 Run the following command to install `net-tools` and `bridge-utils`:
-```bash
+```bash=
 apt install net-tools bridge-utils -y
 ```
 This will install the necessary tools for managing network interfaces and bridges on your Ubuntu.
 
 To configure the network, follow these steps:
 1. Use the following command to get details about your network cards:
-```bash
+```bash=
 ifconfig
 ```
 Make a note of the name of the network card that you want to use for the network bridge.
 
 2. Edit the network configuration file by running the following command:
-```bash
+```bash=
 vim /etc/netplan/01-network-manager-all.yaml
 ```
 
@@ -99,27 +99,27 @@ In the configuration file provided above, you need to replace the following para
 
 4. Save the file and exit.
 5. Set correct permissions:
-```bash
+```bash=
 chmod 600 /etc/netplan/01-network-manager-all.yaml
 chown root:root /etc/netplan/01-network-manager-all.yaml
 ```
 6. Check the configuration by running the following command:
-```bash
-netplan try
+```bash=
+netplan generate
 ```
 If there are no errors, apply the configuration by running the following command:
-```bash
+```bash=
 netplan apply
 ```
 This will apply the new network configuration and configure the network bridges with the specified settings.
 
 ## Install NFS
 1. Install NFS server and client packages by running the following command:
-```bash
+```bash=
 apt install nfs-kernel-server nfs-common -y
 ```
 2. Create the directories for NFS mounts:
-```bash
+```bash=
 mkdir /export
 mkdir -m 777 /export/primary
 mkdir -m 777 /export/secondary
@@ -127,12 +127,12 @@ mkdir -m 777 /mnt/primary
 mkdir -m 777 /mnt/secondary
 ```
 3. Set NFS exports by running the following commands:
-```bash
+```bash=
 echo "/export/secondary *(rw,async,no_root_squash,no_subtree_check)" >> /etc/exports
 echo "/export/primary *(rw,async,no_root_squash,no_subtree_check)" >> /etc/exports
 ```
 4. Configure the NFS kernel server settings by editing the configuration file with the following command:
-```bash
+```bash=
 vim /etc/default/nfs-kernel-server
 ```
 5. Append the following lines to the end of the file:
@@ -146,16 +146,16 @@ STATD_OUTGOING_PORT=2020
 ```
 6. Save the file and exit.
 7. Enable the NFS server and restart it to apply the new configuration by running the following commands:
-```bash
+```bash=
 systemctl enable nfs-kernel-server
 systemctl restart nfs-kernel-server
 ```
 8. Mount NFS shares by running the following command:
-```bash
+```bash=
 exportfs -a
 ```
 9. Set up automatic NFS mounting during startup by editing the /etc/fstab file with the following command:
-```bash
+```bash=
 vim /etc/fstab
 ```
 10. Append the following lines to the end of the file:
@@ -167,18 +167,18 @@ Replace **$LANIP** with the IP address you set up in `Configure Network` step 3.
 
 11. Save the file and exit.
 12. Finally, restart systemd and mount NFS by executing the following commands:
-```bash
+```bash=
 systemctl daemon-reload
 mount -a
 ```
 
 ## Install CloudStack Management
 1. Install MySQL database before installing CloudStack Management with the following command:
-```bash
+```bash=
 apt install mysql-server -y
 ```
 2. Configure MySQL by editing the cloudstack.cnf file with the following command:
-```bash
+```bash=
 vim /etc/mysql/conf.d/cloudstack.cnf
 ```
 3. Add the following lines to the file:
@@ -193,19 +193,19 @@ binlog-format = 'ROW'
 ```
 4. Save the file and exit.
 5. Enable and start the MySQL service with the following commands:
-```bash
+```bash=
 systemctl enable mysql.service
 systemctl start mysql.service
 ```
 6. Change MySQL password by running the following commands:
-```bash
+```bash=
 mysql -u root
 ```
-```sql
-ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password by 'mysqlRootPassword';
+```sql=
+ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password by '$mysqlRootPassword';
 exit
 ```
-Replace **mysqlRootPassword** with the root password you want to change
+Replace **$mysqlRootPassword** with the root password you want to change
 
 7. Run the **`mysql_secure_installation`** command and answer the prompts as follows:
 - Enter the password you just set for the MySQL root user.
@@ -217,20 +217,22 @@ Replace **mysqlRootPassword** with the root password you want to change
 - Reload privilege tables now? **Y**
 
 8. Add the CloudStack Management package to the apt source with the following commands:
-```bash
-echo deb http://download.cloudstack.org/ubuntu noble 4.20 > /etc/apt/sources.list.d/cloudstack.list
-wget -O - http://download.cloudstack.org/release.asc|apt-key add -
+```bash=
+mkdir -p /etc/apt/keyrings
+wget -O- http://packages.shapeblue.com/release.asc | gpg --dearmor | sudo tee /etc/apt/keyrings/cloudstack.gpg > /dev/null
+
+echo deb [signed-by=/etc/apt/keyrings/cloudstack.gpg] http://packages.shapeblue.com/cloudstack/upstream/debian/4.20 / > /etc/apt/sources.list.d/cloudstack.list
 ```
 9. Update apt with the following command:
-```bash
+```bash=
 apt update
 ```
 10. Install CloudStack Management with the following command:
-```bash
+```bash=
 apt install cloudstack-management -y
 ```
 11. Set up the CloudStack database with the following command:
-```bash
+```bash=
 cloudstack-setup-databases cloud:$mysqlCloudPassword@localhost \
 --deploy-as=root:$mysqlRootPassword \
 -e file \
@@ -245,11 +247,11 @@ cloudstack-setup-databases cloud:$mysqlCloudPassword@localhost \
 - **$LANIP** is the IP address you set up in `Configure Network` step 3.
 
 12. Complete the configuration of CloudStack Management with the following command:
-```bash
+```bash=
 cloudstack-setup-management
 ```
 13. Install SystemVM for CloudStack Management with the following command:
-```bash
+```bash=
 /usr/share/cloudstack-common/scripts/storage/secondary/cloud-install-sys-tmplt \
 -m /mnt/secondary \
 -u http://download.cloudstack.org/systemvm/4.20/systemvmtemplate-4.20.1-x86_64-kvm.qcow2.bz2 \
@@ -260,7 +262,7 @@ cloudstack-setup-management
 - **$managementServerKey** is the management server key you just set in step 12.
 
 14. Set sudoers to make sure everything works with the following command:
-```bash
+```bash=
 vim /etc/sudoers
 ```
 15. Append the following line to the end of the file:
@@ -270,15 +272,15 @@ Defaults:cloud !requiretty
 
 ## Install CloudStack Agent
 1. Install CloudStack agent by running the following command:
-```bash
+```bash=
 apt install cloudstack-agent -y
 ```
 2. Enable CloudStack Agent service with the following commands:
-```bash
+```bash=
 systemctl enable cloudstack-agent.service
 ```
 3. Configure QEMU by editing the qemu.conf file with the following command:
-```bash
+```bash=
 vim /etc/libvirt/qemu.conf
 ```
 4. Find the identifier and uncomment, change or append to the configuration:
@@ -287,7 +289,7 @@ vnc_listen = "0.0.0.0"
 ```
 5. Save the file and exit.
 6. Configure the hypervisor by editing the libvirtd.conf file with the following command:
-```bash
+```bash=
 vim /etc/libvirt/libvirtd.conf
 ```
 7. Find the identifier and uncomment, change or append to the configuration:
@@ -300,7 +302,7 @@ mdns_adv = 0
 ```
 8. Save the file and exit.
 9. Configure the hypervisor by editing the libvirtd file with the following command:
-```bash
+```bash=
 vim /etc/default/libvirtd
 ```
 10. Find the identifier and uncomment, change or append to the configuration:
@@ -309,7 +311,7 @@ LIBVIRTD_ARGS="--listen"
 ```
 11. Save the file and exit.
 12. Mask libvirt for listening with the following command:
-```bash
+```bash=
 systemctl mask libvirtd.socket libvirtd-ro.socket \
 libvirtd-admin.socket libvirtd-tls.socket libvirtd-tcp.socketd
 ```
@@ -318,7 +320,7 @@ libvirtd-admin.socket libvirtd-tls.socket libvirtd-tcp.socketd
 systemctl restart libvirtd
 ```
 14. Disable AppArmor with the following commands:
-```bash
+```bash=
 ln -s /etc/apparmor.d/usr.sbin.libvirtd /etc/apparmor.d/disable/
 ln -s /etc/apparmor.d/usr.lib.libvirt.virt-aa-helper /etc/apparmor.d/disable/
 apparmor_parser -R /etc/apparmor.d/usr.sbin.libvirtd
@@ -408,7 +410,7 @@ Please change as follows
 - Password: **Please enter your root password**
 
 If you don't know the root password, use the following commands to change root password:
-```bash
+```bash=
 passwd
 ```
 Then press **"Next"** to continue
@@ -532,23 +534,132 @@ You can operate instance by press **"View console"**
 
 Now there is one instance with Ubuntu in it
 
+# Enable UEFI booting for Instance
+## Requirement
+The host system **must be installed in UEFI mode**.
+
+You can verify the current boot mode using the following command:
+```bash=
+test -d /proc/device-tree && echo "U-Boot mode" || (test -d /sys/firmware/efi && echo "UEFI boot mode" || echo "Legacy BIOS boot")
+```
+## Configuration file
+1. Configure QEMU by editing the `qemu.conf` file with the following command:
+```bash=
+vim /etc/libvirt/qemu.conf
+```
+2. Find the identifier and uncomment, change or append to the configuration:
+```
+nvram = [
+  "/usr/share/OVMF/OVMF_CODE_4M.fd:/usr/share/OVMF/OVMF_VARS_4M.fd",
+  "/usr/share/OVMF/OVMF_CODE_4M.secboot.fd:/usr/share/OVMF/OVMF_VARS_4M.fd",
+  "/usr/share/OVMF/OVMF_CODE_4M.ms.fd:/usr/share/OVMF/OVMF_VARS_4M.ms.fd"
+]
+```
+3. UEFI related params information added in `uefi.properties` which is located `/etc/cloudstack/agent`
+```bash=
+vim /etc/cloudstack/agent/uefi.properties
+```
+4. Paste the specified content into the `uefi.properties` file
+```
+guest.nvram.template.secure=/usr/share/OVMF/OVMF_VARS_4M.ms.fd
+guest.loader.secure=/usr/share/OVMF/OVMF_CODE_4M.secboot.fd
+
+guest.nvram.template.legacy=/usr/share/OVMF/OVMF_VARS_4M.fd
+guest.loader.legacy=/usr/share/OVMF/OVMF_CODE_4M.fd
+
+guest.nvram.path=/var/lib/libvirt/qemu/nvram/
+```
+5. Restart the service using the following command:
+```bash=
+systemctl restart libvirtd cloudstack-agent cloudstack-management
+```
+6. Click on **"Infrastructure"** on the left side, then click on **"Host"** to enter this screen
+
+![image](https://github.com/user-attachments/assets/b7638e33-509f-41cc-9410-6665ea5eca94)
+
+7. Click on the host in use to enter this screen
+
+![image](https://github.com/user-attachments/assets/1b8fedf2-668d-40a2-9655-8eb67d5d2fef)
+
+8. Find **"UEFI supported"** below the **"Details"** section; if it shows true, it means the setup was successful
+
+![image](https://github.com/user-attachments/assets/9857674c-0d3c-4992-ad1c-9775622c24ae)
+
+9. When creating an **"instance"**, enable **"Advanced"** mode and select **"UEFI"** as the **"Boot type"**
+
+![image](https://github.com/user-attachments/assets/95a2d966-e338-4a4f-ba85-28b1dcfd5cbe)
+
+# Access the VM via the public network
+## Requirement
+A public IP address is required to do this
+
+## Steps
+1. Click on **"Infrastructure"** on the left side, then click on **"System VMs"** to enter this screen
+
+![image](https://github.com/user-attachments/assets/017e260d-15cf-4f25-80fb-76da21db55a4)
+
+2. Copy the **"IP address"** next to **"consoleproxy"**
+
+![image](https://github.com/user-attachments/assets/522dc785-0540-4d66-8db3-8fc163436de5)
+
+3. Go into the router and use the copied **"IP address"** to set up **"port forwarding"**
+
+![image3](https://github.com/user-attachments/assets/27a441ea-710a-4967-8aef-c8efe84a9a62)
+
+4. Need to open ports `80` and `8080`. If using HTTPS, also need to open ports `443` and `8443`
+
+![image](https://github.com/user-attachments/assets/6dcbd0c4-ae53-4715-88f9-19dcb31d3efa)
+
+5. Now, to access View Console, simply replace the **"internal IP"** in the URL with the **"public IP"**
+
+![image](https://github.com/user-attachments/assets/be42db74-b6dd-4cf7-930b-e3c00b515036)
+
+**The following items are optional because they require a domain name to use**
+
+6. Click on **"Configuration"** on the left side, then click on **"Global Settings"** to enter this screen
+
+![image](https://github.com/user-attachments/assets/c34f63e2-5ce1-4ecf-bab6-c272777ed400)
+
+7. Search for **"Consoleproxy"** in the search bar
+
+![image](https://github.com/user-attachments/assets/b498fd27-3b50-48f2-a267-d59ead39073f)
+
+8. Scroll down to find the **"Consoleproxy URL domain (consoleproxy.url.domain)"** item
+
+![image](https://github.com/user-attachments/assets/02e04842-eaed-41dd-8344-efde8d7e0457)
+
+9. Enter a valid `domain name`. Note that this field only accepts valid **domain names and local IP addresses**.
+
+![image](https://github.com/user-attachments/assets/1044155b-26d3-4e55-a0b5-df2f688fc35a)
+
+10. If HTTPS connection is required, enable **"Consoleproxy SSL Enabled (consoleproxy.sslEnabled)"**
+
+![image](https://github.com/user-attachments/assets/6f5c6678-b0f9-4c29-b4a1-8f0b8d4db0d9)
+
+11. After entering, press Enter and then restart the service
+```bash=
+systemctl restart cloudstack-management
+```
+12. Now, with this setup, you no longer need to manually replace the IP address to access View Console
+![image](https://github.com/user-attachments/assets/d95d4b2d-d7fd-450f-bb02-c4b7d199886c)
+
 # Some Problem Solutions
 ## Secondary Not Found
 If you encounter the **"Secondary not found"**, you can try the following steps to resolve it:
 1. Restart the NFS server service using the following command:
-```bash
+```bash=
 systemctl restart nfs-server.service
 ```
 2. Export all filesystems using the following command:
-```bash
+```bash=
 exportfs -a
 ```
 3. Mount all filesystems listed in `/etc/fstab` using the following command:
-```bash
+```bash=
 mount -a
 ```
 4. Restart the CloudStack Agent using the following command:
-```bash
+```bash=
 systemctl restart cloudstack-agent.service
 ```
 5. Finally, restart the Secondary SystemVM in the CloudStack Management.
@@ -556,3 +667,4 @@ systemctl restart cloudstack-agent.service
 # Reference
 - https://hackmd.io/@DaLaw2/HJNA0hSA6
 - https://rohityadav.cloud/blog/cloudstack-kvm/
+- https://cwiki.apache.org/confluence/display/CLOUDSTACK/Enable+UEFI+booting+for+Instance
