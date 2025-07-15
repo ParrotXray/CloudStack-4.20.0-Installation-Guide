@@ -543,12 +543,13 @@ install_mysql() {
     ensure_packages mysql-server
     
     # Configure MySQL for CloudStack
-    cat > /etc/mysql/conf.d/cloudstack.cnf << EOF
+    cat > /etc/mysql/mysql.conf.d/mysqld.cnf << EOF
 [mysqld]
 server-id=master-01
+sql-mode="STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ERROR_FOR_DIVISION_BY_ZERO,NO_ZERO_DATE,NO_ZERO_IN_DATE,NO_ENGINE_SUBSTITUTION"
 innodb_rollback_on_timeout=1
 innodb_lock_wait_timeout=600
-max_connections=350
+max_connections=1000
 log-bin=mysql-bin
 binlog-format = 'ROW'
 EOF
@@ -600,8 +601,9 @@ install_cloudstack_management() {
     # wget -O - http://download.cloudstack.org/release.asc | apt-key add -
 
     mkdir -p /etc/apt/keyrings
-    wget -O- http://packages.shapeblue.com/release.asc | gpg --dearmor | sudo tee /etc/apt/keyrings/cloudstack.gpg > /dev/null
-    echo deb [signed-by=/etc/apt/keyrings/cloudstack.gpg] http://packages.shapeblue.com/cloudstack/upstream/debian/4.20 / > /etc/apt/sources.list.d/cloudstack.list
+    wget -O- http://download.cloudstack.org/release.asc | gpg --dearmor | sudo tee /etc/apt/keyrings/cloudstack.gpg > /dev/null
+
+    echo "deb [signed-by=/etc/apt/keyrings/cloudstack.gpg] http://download.cloudstack.org/ubuntu noble 4.20" | sudo tee /etc/apt/sources.list.d/cloudstack.list
     
     apt update
     ensure_packages cloudstack-management cloudstack-usage
