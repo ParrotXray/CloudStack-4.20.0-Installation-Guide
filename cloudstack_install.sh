@@ -662,16 +662,16 @@ install_cloudstack_agent() {
 nvram = [\
   "/usr/share/OVMF/OVMF_CODE_4M.fd:/usr/share/OVMF/OVMF_VARS_4M.fd",\
   "/usr/share/OVMF/OVMF_CODE_4M.secboot.fd:/usr/share/OVMF/OVMF_VARS_4M.fd",\
-  "/usr/share/OVMF/OVMF_CODE_4M.ms.fd:/usr/share/OVMF/OVMF_VARS_4M.ms.fd",\
-  "/usr/share/OVMF/OVMF_CODE.fd:/usr/share/OVMF/OVMF_VARS.fd",\
-  "/usr/share/OVMF/OVMF_CODE.secboot.fd:/usr/share/OVMF/OVMF_VARS.fd",\
-  "/usr/share/OVMF/OVMF_CODE.ms.fd:/usr/share/OVMF/OVMF_VARS.ms.fd"\
+  "/usr/share/OVMF/OVMF_CODE_4M.ms.fd:/usr/share/OVMF/OVMF_VARS_4M.ms.fd"\
 ]' /etc/libvirt/qemu.conf
         elif [ "$ARCH" = "aarch64" ]; then
             # Configure NVRAM for ARM64 UEFI
             sed -i '/^#nvram = \[/,/^#\]/c\
 nvram = [\
-  "/usr/share/AAVMF/AAVMF_CODE.fd:/usr/share/AAVMF/AAVMF_VARS.fd"\
+  "/usr/share/AAVMF/AAVMF_CODE.fd:/usr/share/AAVMF/AAVMF_VARS.fd",\
+  "/usr/share/AAVMF/AAVMF_CODE.secboot.fd:/usr/share/AAVMF/AAVMF_VARS.fd",\
+  "/usr/share/AAVMF/AAVMF_CODE.ms.fd:/usr/share/AAVMF/AAVMF_VARS.ms.fd",\
+  "/usr/share/AAVMF/AAVMF_CODE.no-secboot.fd:/usr/share/AAVMF/AAVMF_VARS.fd"\
 ]' /etc/libvirt/qemu.conf
         fi
         
@@ -715,9 +715,13 @@ nvram = [\
 # CloudStack Agent UEFI Configuration
 # This file configures UEFI boot support for virtual machines
 
-# Secure boot mode (for Windows 11, modern Linux with Secure Boot)
+# Secure boot mode with Microsoft keys (for Windows 11, modern Linux with Secure Boot)
 guest.nvram.template.secure=/usr/share/OVMF/OVMF_VARS_4M.ms.fd
-guest.loader.secure=/usr/share/OVMF/OVMF_CODE_4M.secboot.fd
+guest.loader.secure=/usr/share/OVMF/OVMF_CODE_4M.ms.fd
+
+# Secure boot mode without Microsoft keys (generic secure boot)
+guest.nvram.template.secboot=/usr/share/OVMF/OVMF_VARS_4M.fd
+guest.loader.secboot=/usr/share/OVMF/OVMF_CODE_4M.secboot.fd
 
 # Legacy UEFI mode (standard UEFI without Secure Boot)
 guest.nvram.template.legacy=/usr/share/OVMF/OVMF_VARS_4M.fd
@@ -725,10 +729,6 @@ guest.loader.legacy=/usr/share/OVMF/OVMF_CODE_4M.fd
 
 # NVRAM storage path (where VM-specific UEFI variables are stored)
 guest.nvram.path=/var/lib/libvirt/qemu/nvram/
-
-# Alternative OVMF paths (fallback options)
-guest.nvram.template.fallback=/usr/share/OVMF/OVMF_VARS.fd
-guest.loader.fallback=/usr/share/OVMF/OVMF_CODE.fd
 EOF
     elif [ "$IS_UEFI" = true ] && [ "$ARCH" = "aarch64" ]; then
         log "Creating UEFI properties for ARM64 architecture..."
@@ -737,9 +737,21 @@ EOF
 # CloudStack Agent UEFI Configuration for ARM64
 # This file configures UEFI boot support for ARM64 virtual machines
 
-# ARM64 UEFI mode
+# Secure boot mode with Microsoft keys
+guest.nvram.template.secure=/usr/share/AAVMF/AAVMF_VARS.ms.fd
+guest.loader.secure=/usr/share/AAVMF/AAVMF_CODE.ms.fd
+
+# Secure boot mode without Microsoft keys
+guest.nvram.template.secboot=/usr/share/AAVMF/AAVMF_VARS.fd
+guest.loader.secboot=/usr/share/AAVMF/AAVMF_CODE.secboot.fd
+
+# Standard UEFI mode (default)
 guest.nvram.template.legacy=/usr/share/AAVMF/AAVMF_VARS.fd
 guest.loader.legacy=/usr/share/AAVMF/AAVMF_CODE.fd
+
+# No secure boot mode (explicitly disabled)
+guest.nvram.template.nosecboot=/usr/share/AAVMF/AAVMF_VARS.fd
+guest.loader.nosecboot=/usr/share/AAVMF/AAVMF_CODE.no-secboot.fd
 
 # NVRAM storage path
 guest.nvram.path=/var/lib/libvirt/qemu/nvram/
