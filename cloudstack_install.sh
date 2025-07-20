@@ -870,7 +870,7 @@ configure_network() {
     
     log "Configuring network..."
     
-    ensure_packages net-tools bridge-utils
+    ensure_packages net-tools bridge-utils openvswitch-switch
     
     # Get current netplan files
     NETPLAN_FILES=($(ls /etc/netplan/*.yaml 2>/dev/null || echo))
