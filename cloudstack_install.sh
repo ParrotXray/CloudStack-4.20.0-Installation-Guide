@@ -17,7 +17,7 @@ NC='\033[0m' # No Color
 
 # Global variables for architecture
 SCRIPT_NAME="cloudstack_install.sh"
-OS_VERSION="24.04"
+OS_VERSION="22.04"
 ARCH=""
 SYSTEMVM_URL=""
 IS_UEFI=false
@@ -1155,8 +1155,9 @@ install_cloudstack_management() {
     # Check if repository is already added
     if ! grep -q "download.cloudstack.org" /etc/apt/sources.list.d/cloudstack.list 2>/dev/null; then
         mkdir -p /etc/apt/keyrings
-        wget -O- http://download.cloudstack.org/release.asc | gpg --dearmor | sudo tee /etc/apt/keyrings/cloudstack.gpg > /dev/null
-        echo "deb [signed-by=/etc/apt/keyrings/cloudstack.gpg] http://download.cloudstack.org/ubuntu noble 4.20" | sudo tee /etc/apt/sources.list.d/cloudstack.list
+        wget -O- http://packages.shapeblue.com/release.asc | gpg --dearmor | sudo tee /etc/apt/keyrings/cloudstack.gpg > /dev/null
+
+        echo deb [signed-by=/etc/apt/keyrings/cloudstack.gpg] http://packages.shapeblue.com/cloudstack/upstream/debian/4.20 / > /etc/apt/sources.list.d/cloudstack.list
     fi
     
     apt update
