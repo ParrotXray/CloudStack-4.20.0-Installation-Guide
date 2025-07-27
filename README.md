@@ -1,4 +1,13 @@
 # CloudStack 4.20.0 Installation Guide
+
+# Table of contents
+- [Requirement](#Requirement)
+- [Installation](#Installation)
+  <!-- - [2.1 子章節](#21-子章節) -->
+- [Start Using CloudStack](#Start Using CloudStack)
+
+
+
 ## Requirement
 - Support OS: Ubuntu 24.04
 - Architecture: amd64, aarch64
@@ -589,6 +598,140 @@ systemctl restart libvirtd cloudstack-agent cloudstack-management
 
 ![image](https://github.com/user-attachments/assets/95a2d966-e338-4a4f-ba85-28b1dcfd5cbe)
 
+# Device Passthrough
+## Requirement
+Using KVM Hypervisor
+
+## Setting up GRUB
+1. Confirm whether **IOMMU** is enabled
+```bash=
+dmesg | grep -i iommu
+```
+2. If enabled, the following results will be obtained
+```
+[    0.000000] Command line: BOOT_IMAGE=/vmlinuz-5.15.0-144-generic root=/dev/mapper/ubuntu--vg--2-ubuntu--lv ro intel_iommu=on iommu=pt spectre_v2=retpoline vfio-pci.ids=10de:1c03,10de:10f1
+[    0.059494] Kernel command line: BOOT_IMAGE=/vmlinuz-5.15.0-144-generic root=/dev/mapper/ubuntu--vg--2-ubuntu--lv ro intel_iommu=on iommu=pt spectre_v2=retpoline vfio-pci.ids=10de:1c03,10de:10f1
+[    0.059552] DMAR: IOMMU enabled
+[    0.154357] DMAR-IR: IOAPIC id 2 under DRHD base  0xfed90000 IOMMU 0
+[    0.254156] iommu: Default domain type: Passthrough (set via kernel command line)
+[    0.334639] pci 0000:00:00.0: Adding to iommu group 0
+[    0.334653] pci 0000:00:01.0: Adding to iommu group 1
+[    0.334662] pci 0000:00:06.0: Adding to iommu group 2
+[    0.334674] pci 0000:00:1a.0: Adding to iommu group 3
+[    0.334683] pci 0000:00:1c.0: Adding to iommu group 4
+[    0.334693] pci 0000:00:1c.4: Adding to iommu group 5
+[    0.334702] pci 0000:00:1c.5: Adding to iommu group 6
+[    0.334714] pci 0000:00:1c.6: Adding to iommu group 7
+[    0.334728] pci 0000:00:1c.7: Adding to iommu group 8
+[    0.334741] pci 0000:00:1d.0: Adding to iommu group 9
+[    0.334751] pci 0000:00:1e.0: Adding to iommu group 10
+[    0.334774] pci 0000:00:1f.0: Adding to iommu group 11
+[    0.334783] pci 0000:00:1f.2: Adding to iommu group 11
+[    0.334792] pci 0000:00:1f.3: Adding to iommu group 11
+[    0.334801] pci 0000:00:1f.5: Adding to iommu group 11
+[    0.334806] pci 0000:01:00.0: Adding to iommu group 1
+[    0.334811] pci 0000:01:00.1: Adding to iommu group 1
+[    0.334816] pci 0000:02:00.0: Adding to iommu group 2
+[    0.334822] pci 0000:02:00.1: Adding to iommu group 2
+[    0.334837] pci 0000:04:00.0: Adding to iommu group 12
+[    0.334847] pci 0000:05:00.0: Adding to iommu group 13
+[    0.334857] pci 0000:06:00.0: Adding to iommu group 14
+[    0.334866] pci 0000:07:00.0: Adding to iommu group 15
+[    0.334874] pci 0000:08:05.0: Adding to iommu group 10
+```
+
+3. View PCIe devices
+```bash=
+lspci -v
+```
+
+4. You should see a list of many PCI devices, and some of these lines may be related to the GPU, with a key term possibly being `VGA compatible controller`
+```
+01:00.0 VGA compatible controller: NVIDIA Corporation GP106 [GeForce GTX 1060 6GB] (rev a1) (prog-if 00 [VGA controller])
+        Subsystem: ASUSTeK Computer Inc. GP106 [GeForce GTX 1060 6GB]
+        Flags: fast devsel, IRQ 16, IOMMU group 1
+        Memory at de000000 (32-bit, non-prefetchable) [size=16M]
+        Memory at c0000000 (64-bit, prefetchable) [size=256M]
+        Memory at d0000000 (64-bit, prefetchable) [size=32M]
+        I/O ports at e000 [size=128]
+        Expansion ROM at 000c0000 [disabled] [size=128K]
+        Capabilities: [60] Power Management version 3
+        Capabilities: [68] MSI: Enable- Count=1/1 Maskable- 64bit+
+        Capabilities: [78] Express Legacy Endpoint, MSI 00
+        Capabilities: [100] Virtual Channel
+        Capabilities: [250] Latency Tolerance Reporting
+        Capabilities: [128] Power Budgeting <?>
+        Capabilities: [420] Advanced Error Reporting
+        Capabilities: [600] Vendor Specific Information: ID=0001 Rev=1 Len=024 <?>
+        Capabilities: [900] Secondary PCI Express
+        Kernel driver in use: nouveau
+        Kernel modules: nvidiafb, nouveau
+
+01:00.1 Audio device: NVIDIA Corporation GP106 High Definition Audio Controller (rev a1)
+        Subsystem: ASUSTeK Computer Inc. GP106 High Definition Audio Controller
+        Flags: fast devsel, IRQ 17, IOMMU group 1
+        Memory at df080000 (32-bit, non-prefetchable) [size=16K]
+        Capabilities: [60] Power Management version 3
+        Capabilities: [68] MSI: Enable- Count=1/1 Maskable- 64bit+
+        Capabilities: [78] Express Endpoint, MSI 00
+        Capabilities: [100] Advanced Error Reporting
+        Kernel driver in use: snd_hda_intel
+        Kernel modules: snd_hda_intel
+```
+
+5. Use the values from the previous step `(XX:00)` and execute the following commands to find the vendor ID and device ID for the GPU and audio or the ID of the device you need
+```bash=
+lspci -n -s 01:00
+```
+
+6. Output the content
+```
+01:00.0 0300: 10de:1c03 (rev a1)
+01:00.1 0403: 10de:10f1 (rev a1)
+```
+
+7. Editing the GRUB Configuration
+```bash=
+vim /etc/default/grub
+```
+
+8. Find the `GRUB_CMDLINE_LINUX_DEFAULT` item and fill in the following values. The `vfio-pci.ids` should be filled in with the value just found.
+- Intel device settings
+```
+GRUB_CMDLINE_LINUX_DEFAULT="intel_iommu=on iommu=pt spectre_v2=retpoline vfio-pci.ids=10de:1c03,10de:10f1"
+```
+- AMD Device Settings
+```
+GRUB_CMDLINE_LINUX_DEFAULT="amd_iommu=on iommu=pt spectre_v2=retpoline vfio-pci.ids=10de:1c03,10de:10f1"
+```
+
+9. Updating GRUB
+```bash=
+update-grub
+```
+
+10. Restart
+```bash=
+reboot
+```
+
+11. Check the current GPU status, taking `Nvidia` as an example
+```bash=
+lspci -nnk | grep -A 3 -i nvidia
+```
+
+12. If you see `Kernel driver in use: vfio-pci`, it is successful
+```
+01:00.0 VGA compatible controller [0300]: NVIDIA Corporation GP106 [GeForce GTX 1060 6GB] [10de:1c03] (rev a1)
+        Subsystem: ASUSTeK Computer Inc. GP106 [GeForce GTX 1060 6GB] [1043:85c9]
+        Kernel driver in use: vfio-pci
+        Kernel modules: nvidiafb, nouveau
+01:00.1 Audio device [0403]: NVIDIA Corporation GP106 High Definition Audio Controller [10de:10f1] (rev a1)
+        Subsystem: ASUSTeK Computer Inc. GP106 High Definition Audio Controller [1043:85c9]
+        Kernel driver in use: vfio-pci
+        Kernel modules: snd_hda_intel
+```
+
 # Access the VM via the public network
 ## Requirement
 A public IP address is required to do this
@@ -668,3 +811,8 @@ systemctl restart cloudstack-agent.service
 - https://hackmd.io/@DaLaw2/HJNA0hSA6
 - https://rohityadav.cloud/blog/cloudstack-kvm/
 - https://cwiki.apache.org/confluence/display/CLOUDSTACK/Enable+UEFI+booting+for+Instance
+- https://www.server-world.info/en/note?os=Ubuntu_22.04&p=kvm&f=13
+- https://github.com/Andrew-Willms/GPU-Passthrough-On-Ubuntu-22.04.2-for-Beginners
+- https://gist.github.com/rajujith/4cc3f17379b63e86f73b041f2be75528
+- https://lab.piszki.pl/cloudstack-kvm-and-running-vm-with-vgpu/
+- https://github.com/apache/cloudstack/issues/8784
